@@ -81,6 +81,7 @@ export default {
   position: relative;
   width: 300px;
   height: 300px;
+  margin: 20px 50px 1px 50px;
 }
 
 /* Turtle & text inside the chart */

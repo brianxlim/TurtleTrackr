@@ -9,8 +9,7 @@
       <Breakdown :categories="categories" />
       
     </div>
-
-    <button class="add-button">+</button>
+    <AddButton />
   </div>
 </template>
 
@@ -18,12 +17,14 @@
 import PieChart from "@/components/PieChart.vue";
 import Breakdown from "@/components/Breakdown.vue";
 import NavBar from "@/components/NavBar.vue";
+import AddButton from "@/components/AddButton.vue";
 
 export default {
   components: {
     PieChart,
     Breakdown,
     NavBar,
+    AddButton,
   },
   data() {
     return {

@@ -18,7 +18,8 @@ export default {
 <style scoped>
 .breakdown {
   background: white;
-  padding: 100px;
+  padding: 50px 100px;
+  margin: 50px 150px;
   border-radius: 10px;
   width: 200px; /* Fixed width */
   height: 100%; /* Full height */
@@ -29,9 +30,11 @@ export default {
 
 h2 {
   text-align: center;
-  font-size: 18px;
+  font-size: 20px;
   margin-bottom: 10px;
   color: #3d5538;
+  font-weight: bold;
+
 }
 
 .category {
@@ -48,5 +51,6 @@ h2 {
 }
 p{
   color: #3d5538;
+  font-weight: bold;
 }
 </style>

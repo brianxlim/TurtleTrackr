@@ -34,10 +34,17 @@ export default {
   color: white;
   margin: 0 10px;
   text-decoration: none;
+  font-size: medium;
+  font-weight: bolder;
 }
 
 #turtleTrackr {
   height: 40px;
   width: auto;
+}
+
+.logo {
+  font-size: larger;
+  font-weight: bold;
 }
 </style>
