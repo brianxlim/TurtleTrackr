@@ -18,30 +18,26 @@ export default {
 <style scoped>
 .breakdown {
   background: white;
-  padding: 50px 100px;
-  margin: 50px 150px;
-  border-radius: 10px;
-  width: 200px; /* Fixed width */
+  padding: 2rem 6rem;
+  border-radius: 1rem;
+  width: 80%;
   height: 100%; /* Full height */
-  max-height: 250px; /* Limits height */
   box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
-
+  overflow: auto;
 }
 
 h2 {
   text-align: center;
-  font-size: 20px;
-  margin-bottom: 10px;
-  color: #3d5538;
-  font-weight: bold;
-
+  font-size: 1.5rem;
+  margin: 0 0 1.5rem 0;
+  color: var(--color-main-dark);
+  font-weight: 800;
 }
 
 .category {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 5px 0;
 }
 
 .icon {
@@ -49,8 +45,9 @@ h2 {
   height: 16px;
   border-radius: 50%;
 }
+
 p{
-  color: #3d5538;
+  color: var(--color-main-dark);
   font-weight: bold;
 }
 </style>
