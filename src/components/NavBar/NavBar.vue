@@ -8,13 +8,19 @@
       </button>
 
       <!-- Desktop view -->
-      <nav v-else>
-        <router-link to="/">Home</router-link>
-        <router-link to="/family">Family</router-link>
-        <router-link to="/history">History</router-link>
-        <router-link to="/goals">Goals</router-link>
-        <router-link to="/profile">Profile</router-link>
-      </nav>
+      <div v-else>
+        <nav v-if="isAuthenticated">
+          <router-link to="/">Home</router-link>
+          <router-link to="/family">Family</router-link>
+          <router-link to="/history">History</router-link>
+          <router-link to="/goals">Goals</router-link>
+          <router-link to="/profile">Profile</router-link>
+        </nav>
+        <nav v-else>
+          <router-link :to="{ path: '/auth', query: { mode: 'login' } }">Log In</router-link>
+          <router-link :to="{ path: '/auth', query: { mode: 'signup' } }">Sign Up</router-link>
+        </nav>
+      </div>
     </div>
   </div>
 
@@ -28,66 +34,64 @@
   >
     <template #container="{ closeCallback }">
       <div class="drawer-container">
-        <nav class="drawer-nav">
+        <nav v-if="isAuthenticated" class="drawer-nav">
           <router-link class="drawer-nav-link" to="/" @click="closeDrawer">Home</router-link>
           <router-link class="drawer-nav-link" to="/family" @click="closeDrawer">Family</router-link>
           <router-link class="drawer-nav-link" to="/history" @click="closeDrawer">History</router-link>
           <router-link class="drawer-nav-link" to="/goals" @click="closeDrawer">Goals</router-link>
           <router-link class="drawer-nav-link" to="/profile" @click="closeDrawer">Profile</router-link>
         </nav>
+        <nav v-else class="drawer-nav">
+          <router-link :to="{ path: '/auth', query: { mode: 'login' } }">Log In</router-link>
+          <router-link :to="{ path: '/auth', query: { mode: 'signup' } }">Sign Up</router-link>
+        </nav>
       </div>
     </template>
   </Drawer>
 </template>
 
-<script>
-import { ref, onMounted, onUnmounted, computed } from 'vue';
+<script setup>
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import Drawer from 'primevue/drawer';
 import 'primeicons/primeicons.css';
 import Logo from "@/components/NavBar/Logo.vue";
+import { auth } from '@/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 
-export default {
-  name: "NavBar",
-  components: {
-    Logo,
-    Drawer,
-  },
-  setup() {
-    const visibleDrawer = ref(false);
-    const windowWidth = ref(window.innerWidth);
+// Define reactive state variables
+const visibleDrawer = ref(false);
+const windowWidth = ref(window.innerWidth);
+const isAuthenticated = ref(false);
 
-    const handleResize = () => {
-      windowWidth.value = window.innerWidth;
-    };
+// Handle window resize events
+const handleResize = () => {
+  windowWidth.value = window.innerWidth;
+};
 
-    onMounted(() => {
-      window.addEventListener("resize", handleResize);
-    });
+onMounted(() => {
+  window.addEventListener("resize", handleResize);
+  onAuthStateChanged(auth, (user) => {
+    isAuthenticated.value = !!user;
+  });
+});
 
-    onUnmounted(() => {
-      window.removeEventListener("resize", handleResize);
-    });
+onUnmounted(() => {
+  window.removeEventListener("resize", handleResize);
+});
 
-    // Set mobile view for widths below 800px
-    const isMobile = computed(() => windowWidth.value < 800);
+// Computed property for determining mobile view
+const isMobile = computed(() => windowWidth.value < 800);
 
-    const toggleDrawer = () => {
-      visibleDrawer.value = !visibleDrawer.value;
-    };
+// Functions to toggle and close the Drawer
+const toggleDrawer = () => {
+  visibleDrawer.value = !visibleDrawer.value;
+};
 
-    const closeDrawer = () => {
-      visibleDrawer.value = false;
-    };
-
-    return {
-      visibleDrawer,
-      isMobile,
-      toggleDrawer,
-      closeDrawer,
-    };
-  },
+const closeDrawer = () => {
+  visibleDrawer.value = false;
 };
 </script>
+
 
 <style scoped>
 .navbar {

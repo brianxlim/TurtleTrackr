@@ -38,9 +38,7 @@ export default {
 <style scoped>
 .dashboard {
     display: flex;
-
-    /* Ensure add button is below main content */
-    flex-direction: column; 
+    flex-direction: column; /* Ensure add button is below main content */
     width: 100vw;
     padding: 4rem 2rem;
     gap: 3rem;

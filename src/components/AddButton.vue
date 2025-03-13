@@ -58,10 +58,7 @@
 import firebaseApp from '../firebase.js';
 import { getFirestore } from "firebase/firestore";
 import { doc, setDoc } from "firebase/firestore";
-
-// Initialize Firestore
-const db = getFirestore(firebaseApp);
-console.log("Firestore DB:", db); // Debugging Firestore connection
+import { db } from "@/firebase.js"
 
 export default {
   data() {
