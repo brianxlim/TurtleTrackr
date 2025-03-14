@@ -1,0 +1,16 @@
+/* 
+Component-Level or Page-Level Styling
+Used for additional styling, such as styling links, buttons, padding for the #app container, and other styles that are more specific to the UI elements.
+*/
+
+@import './base.css';
+
+@media (hover: hover) {
+  a:hover {
+    background-color: hsla(160, 100%, 37%, 0.2);
+  }
+}
+
+:root {
+  --padding-body: 4rem 4rem;
+}

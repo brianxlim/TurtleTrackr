@@ -1,0 +1,41 @@
+/* Defines global styles like body styles, typography, font smoothing, and background colors. It is responsible for setting the base visual theme of your app. */
+
+/* Global reset */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:root {
+  /* Main Theme */
+  --color-main-dark: #586F52;
+  --color-main-medium: #C5E8A8;
+  --color-main-light: #FDF6C1;
+
+  /* Secondary Theme */
+  --color-secondary-dark: #D8C49D;
+  --color-secondary-medium: #CEDBC9;
+  --color-secondary-light: #FFF3DC;
+
+  /* Accent Colors */
+  --color-accent-dark: #627EA4;
+  --color-accent-medium: #A9C4EA;
+  --color-accent-light: #EAA9BA;
+
+  /* Font Families */
+  --font-logo: 'Passion One', serif;
+  --font-body: 'Poppins', sans-serif;
+}
+
+body {
+  min-height: 100vh;
+  font-family: var(--font-body);
+  background-color: var(--color-secondary-light);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
