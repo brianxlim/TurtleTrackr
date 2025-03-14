@@ -15,6 +15,10 @@
         <label for="display-name">Display Name</label>
         <input type="display-name" v-model="displayName" placeholder="John Doe" required />
       </div>
+      <div v-if="showSignUp" class="field">
+        <label for="avatar">Select Avatar</label>
+        <AvatarSelection @selected-turtle="handleSelectedTurtle" />
+      </div>
       <button type="submit">{{ showSignUp ? 'Sign Up' : 'Log In' }}</button>
     </form>
     <p>
@@ -31,18 +35,19 @@
 import { ref, watchEffect } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '@/stores/AuthStores';
+import AvatarSelection from '@/components/AvatarSelection.vue';
 
 const email = ref("");
 const password = ref("");
 const displayName = ref("");
+const selectedTurtle = ref(null);
 const showSignUp = ref(false);
 const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
 
-// Watch the route query to set the correct mode
+// If query.mode equals 'signup', then show sign up; otherwise, show log in.
 watchEffect(() => {
-  // If query.mode equals 'signup', then show sign up; otherwise, show log in.
   showSignUp.value = route.query.mode === 'signup';
 });
 
@@ -57,7 +62,7 @@ const handleAuth = async () => {
   // If password validated
   try {
     if (showSignUp.value) {
-      await authStore.registerUserWithEmailPassword(email.value, password.value, displayName.value);
+      await authStore.registerUserWithEmailPassword(email.value, password.value, displayName.value, selectedTurtle.value);
     } else {
       await authStore.logInWithEmailAndPassword(email.value, password.value);
     }
@@ -72,6 +77,11 @@ const toggleAuthMode = () => {
   showSignUp.value = !showSignUp.value;
   router.replace({ path: '/auth', query: { mode: showSignUp.value ? 'signup' : 'login' } });
 };
+
+// Handle selected turtle during registration
+const handleSelectedTurtle = (turtle) => {
+  selectedTurtle.value = turtle;
+}
 </script>
 
 <style scoped>
