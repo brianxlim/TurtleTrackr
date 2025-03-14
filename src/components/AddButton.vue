@@ -30,7 +30,7 @@
             <div class="form-group">
               <label for="category">Category*</label>
               <select id="category" v-model="formData.category" required>
-                <option value="" disabled>Choose a category</option>
+                <option value="" disabled></option>
                 <option value="Food">Food</option>
                 <option value="Travel">Travel</option>
                 <option value="Shopping">Shopping</option>
@@ -56,9 +56,9 @@
 
 <script>
 import firebaseApp from '../firebase.js';
-import { getFirestore } from "firebase/firestore";
-import { doc, setDoc } from "firebase/firestore";
+import { getFirestore, collection, addDoc } from "firebase/firestore";
 import { db } from "@/firebase.js"
+import { auth } from "@/firebase.js"
 
 export default {
   data() {
@@ -92,16 +92,22 @@ export default {
     },
     async savetofs() {
       console.log("IN AC - Saving Data...");
+      const user = auth.currentUser;
+      if(!user) {
+        alert("No user logged in. Please login to save your data.");
+        return;
+      }
 
       alert("Saving your data for Title: " + this.formData.title);
 
       try {
-        await setDoc(doc(db, "Expense", this.formData.title), {
+        await addDoc(collection(db, "Users", user.uid, "Expenses"), {
           Title: this.formData.title,
           Amount: this.formData.amount,
           Date: this.formData.date,
           Category: this.formData.category,
-          Highlights: this.formData.highlights
+          Highlights: this.formData.highlights,
+          createdAt: new Date()
         });
 
         console.log("✅ Document successfully written!");
@@ -153,34 +159,44 @@ export default {
 }
 
 .modal-content {
-  background: darkolivegreen;
-  padding: 20px;
-  border-radius: 10px;
-  width: 50%;
-  text-align: left;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
+  background: rgb(206, 220, 204); 
+  padding: 20px; 
+  border-radius: 10px; 
+  width: 50%; 
+  max-width: 800px; 
+  text-align: left; 
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); 
+  display: flex; 
+  flex-direction: column; 
+  gap: 15px; 
+  border: 2px solid rgb(57,68,61);
+  box-sizing: border-box; 
+  overflow-y: auto; 
 }
+
+input, select, textarea {
+  width: 100%;
+  padding: 8px;
+  font-size: 10px;
+  border: 1px solid #ddd;
+}
+
 
 .close-button {
   margin-top: 10px;
   padding: 5px 10px;
-  background: #e74c3c;
-  color: white;
-  border: none;
-  border-radius: 5px;
+  background: #d8c49d;
+  color: black;
+  border: 2px solid rgb(57,68,61);
   cursor: pointer;
 }
 
 .add-expense {
   margin-top: 10px;
-  padding: 5px 10px;
-  background: rgb(242, 242, 167);
+  padding: 5px 15px;
+  background: rgba(254,243,220,255);
   color: black;
-  border: none;
-  border-radius: 5px;
+  border: 2px solid rgb(57,68,61);
   cursor: pointer;
 }
 
@@ -189,7 +205,7 @@ export default {
 }
 
 .close-button:hover {
-  background: #c0392b;
+  background: #a89a7d;
 }
 
 .form-row {
@@ -210,7 +226,7 @@ export default {
 #date,
 #category,
 #highlights {
-  font-size: larger;
+  font-size: 16px;
 }
 
 .button-group {

@@ -1,13 +1,17 @@
-<template lang="">
-    <div>
-        
+<template>
+    <div class="p-6">
+      <h1 class="text-2xl font-bold mb-4">Expense History</h1>
+      <AllExpenses />
     </div>
-</template>
-<script>
-export default {
-    
-}
-</script>
-<style lang="">
-    
-</style>
+  </template>
+  
+  <script>
+  import AllExpenses from "@/components/TransactionTable.vue"; // Adjust path if needed
+  
+  export default {
+    components: {
+      AllExpenses,
+    },
+  };
+  </script>
+  
