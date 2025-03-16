@@ -3,23 +3,37 @@
     <h1 v-if="!showSignUp">Log In</h1>
     <h1 v-else>Sign Up</h1>
     <form @submit.prevent="handleAuth">
+      <!-- Email field -->
       <div class="field">
         <label for="email">Email</label>
         <input type="email" v-model="email" placeholder="john_doe@gmail.com" required />
       </div>
+
+      <!-- Password field -->
       <div class="field">
         <label for="password">Password</label>
         <input type="password" v-model="password" placeholder="Enter password" required />
       </div>
+
+      <!-- Display name field -->
       <div v-if="showSignUp" class="field">
         <label for="display-name">Display Name</label>
         <input type="display-name" v-model="displayName" placeholder="John Doe" required />
       </div>
-      <div v-if="showSignUp" class="field">
+
+      <!-- Avatar field -->
+      <section id="avatar" v-if="showSignUp" class="field">
         <label for="avatar">Select Avatar</label>
         <AvatarSelection @selected-turtle="handleSelectedTurtle" />
-      </div>
-      <button type="submit">{{ showSignUp ? 'Sign Up' : 'Log In' }}</button>
+      </section>
+
+      <!-- Sign up button -->
+      <button type="submit" :disabled="loading">
+        <span v-if="loading" class="spinner">
+          <i class="pi pi-spin pi-spinner" style="font-size: 1rem"></i>
+        </span>
+        <span v-else>{{ showSignUp ? 'Sign Up' : 'Log In' }}</span>
+      </button>
     </form>
     <p>
       <span v-if="!showSignUp">Don't have an account? </span>
@@ -45,6 +59,7 @@ const showSignUp = ref(false);
 const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
+const loading = ref(false);
 
 // If query.mode equals 'signup', then show sign up; otherwise, show log in.
 watchEffect(() => {
@@ -53,9 +68,24 @@ watchEffect(() => {
 
 // Register or sign in user depending on which page he is on
 const handleAuth = async () => {
+  if (loading.value) return;
+  loading.value = true;
+
   // Password validation if sign up
   if (showSignUp.value && password.value.length < 6) {
     alert("Password must be at least 6 characters long.");
+    loading.value = false;
+    return;
+  }
+
+  // Make avatar selection required during sign up
+  if (showSignUp.value && !selectedTurtle.value) {
+    alert("Please select an avatar!");
+
+    // Scroll back to avatar field if no avatar selected
+    const avatarSection = document.getElementById("avatar");
+    avatarSection.scrollIntoView({ behavior: "smooth", block: "center" });
+    loading.value = false;
     return;
   }
 
@@ -69,6 +99,8 @@ const handleAuth = async () => {
     router.push('/home');
   } catch (error) {
     console.error("Authentication error:", error);
+  } finally {
+    loading.value = false;
   }
 };
 
@@ -137,6 +169,11 @@ button {
   font-family: 'Poppins';
   margin: 0 0 1rem 0;
   align-self: center;
+}
+
+button:disabled {
+  background-color: #ddd;
+  cursor: not-allowed;
 }
 
 button:hover {

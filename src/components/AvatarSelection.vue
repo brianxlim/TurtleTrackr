@@ -7,7 +7,7 @@
                 :class="['avatar-item', { selected: selectedTurtle && selectedTurtle.turtleFilename === turtle.turtleFilename }]"
                 @click="selectAvatar(turtle)"
             >
-                <img :src="getAvatarURL(turtle.turtleFilename)" :alt="turtle.turtleName" />
+                <img :src="`/turtles/${turtle.turtleFilename}`" :alt="turtle.turtleName" />
                 <p>{{ turtle.turtleName }}</p>
             </div>
         </div>
@@ -17,7 +17,6 @@
 <script setup>
 import { ref } from "vue";
 import turtles from "@/assets/turtles.json";
-import { getAvatarURL } from "@/firebase";
 
 // Event listeners @selected-turtle will trigger when this value changes
 const emit = defineEmits(["selected-turtle"]);

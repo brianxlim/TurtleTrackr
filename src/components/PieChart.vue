@@ -3,7 +3,7 @@
     <div class="pie-chart">
       <canvas ref="chartCanvas"></canvas>
       <div class="center-text">
-        <img src="@/assets/turtles/pigTurtle.png" alt="Turtle" />
+        <img src="/turtles/pigTurtle.png" alt="Turtle" />
         <p>${{ totalAmount.toFixed(2) }}</p>
       </div>
     </div>
