@@ -14,18 +14,32 @@
 </template>
 
 <script setup>
-import { computed, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
 import { useAuthStore } from '@/stores/AuthStores';
-import { getAvatarURL } from '@/firebase';
 
 const authStore = useAuthStore();
 const displayName = computed(() => authStore.user?.displayName || "Guest");
-const turtleSrc = computed(() => getAvatarURL(authStore.user?.selectedTurtle.turtleFilename) || "https://i.sstatic.net/l60Hf.png");
+
+// Default image URL
+const DEFAULT_AVATAR = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSpwxCN33LtdMLbWdhafc4HxabqpaU0qVbDxQ&s";
+
+// Reactive reference for the avatar source
+const turtleSrc = ref(DEFAULT_AVATAR);
+
+// Watch for changes in `authStore.user`
+watch(() => authStore.user, (newUser) => {
+    if (newUser && newUser.selectedTurtle && newUser.selectedTurtle.turtleFilename) {
+        turtleSrc.value = `/turtles/${newUser.selectedTurtle.turtleFilename}`;
+    } else {
+        turtleSrc.value = DEFAULT_AVATAR;
+    }
+}, { immediate: true }); // Run immediately in case `authStore.user` is already set
 
 const signOutUser = async () => {
     await authStore.logUserOut(); 
 };
 </script>
+
 
 <style scoped>
 .main {
@@ -52,10 +66,8 @@ header {
 
 .avatar-container {
     width: 6rem;
-    height:6rem;
+    height: 6rem;
     place-content: center;
-    border: 2px solid #ddd;
-    border-radius: 50%;
     margin: 0;
 }
 
@@ -65,7 +77,7 @@ header {
 }
 
 button {
-    border-radius: 1cqb;
+    border-radius: 1rem;
     border: 1px solid #ddd;
     padding: 0.5rem 1rem;
     font-family: 'Poppins';

@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
-import { onAuthStateChanged, 
+import { 
+    onAuthStateChanged, 
     createUserWithEmailAndPassword, 
     signInWithEmailAndPassword, 
     signOut, 
@@ -16,12 +17,11 @@ export const useAuthStore = defineStore("authStore", () => {
       // Listen to auth state changes and merge custom data from Firestore
     onAuthStateChanged(auth, async (firebaseUser) => {
         if (firebaseUser) {
-            const userDocRef = doc(db, "users", firebaseUser.uid);
+            const userDocRef = doc(db, "Users", firebaseUser.uid);
             const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
             const userData = userDoc.data();
-            // Merge custom data; note: Firebase only supports certain fields natively.
-            firebaseUser.displayName = userData.displayName || firebaseUser.displayName;
+            firebaseUser.displayName = userData.displayName;
             firebaseUser.selectedTurtle = userData.selectedTurtle;
         }
         }
@@ -35,8 +35,8 @@ export const useAuthStore = defineStore("authStore", () => {
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             await updateProfile(userCredential.user, { displayName });
         
-        // Create a new document in the "users" collection with the user's UID
-        await setDoc(doc(db, "users", userCredential.user.uid), { displayName, selectedTurtle });
+        // Create a new document in the "Users" collection with the user's UID
+        await setDoc(doc(db, "Users", userCredential.user.uid), { displayName, selectedTurtle });
 
         } catch (error) {
             console.error("Registration error:", error);
@@ -53,7 +53,7 @@ export const useAuthStore = defineStore("authStore", () => {
             user.value = userCredential.user;
 
             // Fetch additional custom fields from Firestore
-            const userDocRef = doc(db, "users", user.value.uid);
+            const userDocRef = doc(db, "Users", user.value.uid);
             const userDoc = await getDoc(userDocRef);
             if (userDoc.exists()) {
                 const userData = userDoc.data();

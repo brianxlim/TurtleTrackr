@@ -1,7 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getAuth } from 'firebase/auth';
-import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -17,15 +16,8 @@ const firebaseConfig = {
 const firebaseApp = initializeApp(firebaseConfig);
 export default firebaseApp;
 
-// Initialize Firestore, Auth and Storage
+// Initialize Firestore, Auth
 const db = getFirestore(firebaseApp);
 const auth = getAuth(firebaseApp);
-const storage = getStorage(firebaseApp);
 
-// Utility function to construct the full download URL.
-const baseURL = "https://firebasestorage.googleapis.com/v0/b/turtletrackr.firebasestorage.app/o/";
-const getAvatarURL = (filename) => {
-    return `${baseURL}${encodeURIComponent(filename)}?alt=media`;
-};
-
-export { db, auth, storage, getAvatarURL }
+export { db, auth }
