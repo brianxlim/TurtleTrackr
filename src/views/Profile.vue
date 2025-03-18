@@ -4,7 +4,6 @@
             <!--Avatar container-->
             <div class="avatar-container">
                 <img :src="turtleSrc" id="avatar" />
-                
             </div>
             <!--Profile Info: includes name of user + editing profile button-->
             <div class="profile-info">
@@ -18,8 +17,10 @@
             <input type="text" :value="email" disabled />
             
             <label>Password:</label>
-            <input type="password" value="********" disabled />
-            <button id="change-password-button" @click="goToChangePassword">Change Password</button>
+            <div class="input-container">
+                <input type="password" value="********" disabled />
+                <span id="change-password-text" @click="goToChangePassword">Change Password</span>
+            </div>
         </div>
 
         <div class="button-container">
@@ -86,9 +87,9 @@ header {
 }
 
 #edit-profile-button {
+    color: black;
     background: none;
     border: none;
-    color: black;
     font-size: 1rem;
     text-decoration: underline;
     cursor: pointer;
@@ -126,8 +127,26 @@ header {
 
 input {
     border: 1px solid #ddd;
+    background-color: lightgrey;
+    border-radius: 10px;
     padding: 0.5rem;
     width: 100%;
+    font-size: 1rem;
+}
+
+#change-password-text {
+    position: absolute;
+    right: 10px; /* Aligns text inside the input field */
+    font-size: 0.8rem;
+    color: black;
+    text-decoration: underline;
+    cursor: pointer;
+    padding-right: 4rem;
+    padding-top: 0.5rem;
+}
+
+#change-password-text:hover {
+    color: var(--color-accent-light);
 }
 
 button {
@@ -140,7 +159,6 @@ button {
 }
 
 button:hover {
-    opacity: 70%;
     transition: ease-in-out 0.3s;
     cursor: pointer;
 }
@@ -158,9 +176,21 @@ button:hover {
 
 #logout-button {
     background-color: var(--color-accent-dark);
+    color: black;
+}
+
+#logout-button:hover {
+    background-color: var(--color-main-dark);
+    color: white;
 }
 
 #delete-account-button {
+    background-color: var(--color-accent-light);
+    color: black;
+}
+
+#delete-account-button:hover {
     background-color: rgb(161, 57, 57);
+    color: white;
 }
 </style>
