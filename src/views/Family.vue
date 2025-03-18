@@ -11,7 +11,7 @@
   
       <!-- Groups Display -->
       <div v-if="groups.length > 0" class="group-list">
-        <div v-for="group in groups" :key="group.id" class="group-card">
+        <div v-for="group in groups" :key="group.id" class="group-card" @click="goToGroupDetails(group.id)">
           <div class="group-header" :style="{ backgroundColor: group.color }">
             <h2>{{ group.name }}</h2>
           </div>
@@ -58,8 +58,19 @@
   <script>
   import { db, auth } from "@/firebase";
   import { collection, addDoc, getDocs, query, where, updateDoc, arrayUnion } from "firebase/firestore";
-  
+  import { useRouter } from 'vue-router';
+
   export default {
+    setup() {
+      const router = useRouter();
+
+      const goToGroupDetails = (groupId) => {
+        router.push({ name: "FamilyDetails", params: { id: groupId } });
+      };
+
+      return { goToGroupDetails };
+    },
+
     data() {
       return {
         showCreateGroupModal: false,
@@ -74,6 +85,10 @@
       await this.fetchGroups();
     },
     methods: {
+
+      goToGroupDetails(groupId) {
+      this.$router.push({ name: "FamilyDetails", params: { id: groupId } });
+      },
       generateGroupCode() {
         return Math.random().toString(36).substring(2, 10).toUpperCase();
       },
@@ -224,10 +239,12 @@
     width: 250px;
     background: white;
     border-radius: 10px;
-    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
     overflow: hidden;
     padding: 15px;
     text-align: center;
+    cursor: pointer;
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
   }
   
   .group-header {
