@@ -1,17 +1,34 @@
 <template>
     <div class="main">
         <header>
-            <h1 id="welcome-text">Welcome back, {{ displayName }}</h1>
+            <!--Avatar container-->
             <div class="avatar-container">
                 <img :src="turtleSrc" id="avatar" />
+                
+            </div>
+            <!--Profile Info: includes name of user + editing profile button-->
+            <div class="profile-info">
+                <h2>{{ displayName }}</h2>
             </div>
         </header>
+        <button id="edit-profile-button" @click="goToCustomisation">Edit Profile</button>
+        <!--Email and Password-->
+        <div class="profile-details">
+            <label>Email:</label>
+            <input type="text" :value="email" disabled />
+            
+            <label>Password:</label>
+            <input type="password" value="********" disabled />
+            <button id="change-password-button" @click="goToChangePassword">Change Password</button>
+        </div>
+
         <div class="button-container">
-            <button id="logout-button" @click="signOutUser">Log out</button>
-            <button id="delete-account-button" @click="">Delete Account</button>
+            <button id="logout-button" @click="signOutUser">Logout</button>
+            <button id="delete-account-button" @click="deleteAccount">Delete Account</button>
         </div>
     </div>
 </template>
+
 
 <script setup>
 import { ref, watch, computed } from 'vue';
@@ -19,6 +36,7 @@ import { useAuthStore } from '@/stores/AuthStores';
 
 const authStore = useAuthStore();
 const displayName = computed(() => authStore.user?.displayName || "Guest");
+const email = computed(() => authStore.user?.email || "");
 
 // Default image URL
 const DEFAULT_AVATAR = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSpwxCN33LtdMLbWdhafc4HxabqpaU0qVbDxQ&s";
@@ -40,40 +58,76 @@ const signOutUser = async () => {
 };
 </script>
 
-
 <style scoped>
 .main {
     padding: var(--padding-body);
 }
 
-#welcome-text {
-    margin: 0;
-}
-
 header {
     display: flex;
-    flex-direction: row;
     align-items: center;
-    margin: 0 0 2rem 0;
     gap: 1rem;
 }
 
-@media (max-width: 1000px) {
-    header {
-        gap: 0;
-    }
-}
-
 .avatar-container {
-    width: 6rem;
-    height: 6rem;
-    place-content: center;
-    margin: 0;
+    width: 10rem;
+    height: 8rem;
+    background-color: var(--color-accent-medium); /* Customize the background color */
+    border-radius: 50%; /* Makes the background a perfect circle */
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 #avatar {
-    width: 6rem;
-    height: 4rem;
+    width: 8rem;
+    height: 6rem;
+    border-radius: 50%;
+}
+
+#edit-profile-button {
+    background: none;
+    border: none;
+    color: black;
+    font-size: 1rem;
+    text-decoration: underline;
+    cursor: pointer;
+    display: block;
+    margin-top: 0.5rem;
+    text-align: center;
+    padding-left: 1.8rem;
+}
+
+#edit-profile-button:hover {
+    color: var(--color-accent-light);
+}
+
+.profile-info {
+    display: flex;
+    justify-content: left;
+    align-items: center;
+    background-color: var(--color-secondary-medium); /* Customize color */
+    width: 100%; /* Make it span the entire width */
+    height: 3rem; /* Adjust height to be smaller */
+    border-radius: 10px;
+    font-weight: bold;
+    font-size: 1.2rem;
+    color: black; /* Adjust text color */
+    padding-left: 1.5rem;
+}
+
+
+.profile-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 1rem 0;
+}
+
+input {
+    border: 1px solid #ddd;
+    padding: 0.5rem;
+    width: 100%;
 }
 
 button {
@@ -96,6 +150,12 @@ button:hover {
     gap: 3rem;
 }
 
+
+
+#change-password-button {
+    background-color: var(--color-secondary);
+}
+
 #logout-button {
     background-color: var(--color-accent-dark);
 }
@@ -104,4 +164,3 @@ button:hover {
     background-color: rgb(161, 57, 57);
 }
 </style>
-  
