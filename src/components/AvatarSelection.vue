@@ -40,7 +40,7 @@ const selectAvatar = async (turtle) => {
 }
 
 /* Responsiveness to mobile */
-@media (max-width: 1000px) {
+@media (max-width: 800px) {
     .avatars {
         grid-template-columns: repeat(2, auto);
     }

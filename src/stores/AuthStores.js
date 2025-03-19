@@ -5,10 +5,12 @@ import {
     createUserWithEmailAndPassword, 
     signInWithEmailAndPassword, 
     signOut, 
-    updateProfile 
+    updateProfile, 
+    signInWithPopup,
+    GoogleAuthProvider,
 } from "firebase/auth";
 import { doc, setDoc, getDoc } from "firebase/firestore";
-import { auth, db } from "@/firebase";
+import { auth, db, googleProvider } from "@/firebase";
 import router from "@/router/router";
 
 export const useAuthStore = defineStore("authStore", () => {
@@ -119,6 +121,22 @@ export const useAuthStore = defineStore("authStore", () => {
             alert(error.message);
         }
     };
+
+    // Google sign in
+    const logInWithGoogle = async () => {
+        signInWithPopup(auth, googleProvider)
+        .then((result) => {
+            const credential = GoogleAuthProvider.credentialFromResult(result); // returns a Google Access Token
+            const token = credential.accessToken;
+            const user = result.user; // signed-in user info
+        }) .catch((error) => {
+            // TODO: Handle errors
+            const errorCode = error.code;
+            const errorMessage = error.message;
+            const email = error.customData.email;
+            const credential = GoogleAuthProvider.credentialFromError(error); // AuthCredential type that was used
+        });
+    }
 
     return {
         user,
