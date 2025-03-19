@@ -57,6 +57,22 @@ watch(() => authStore.user, (newUser) => {
 const signOutUser = async () => {
     await authStore.logUserOut(); 
 };
+
+const deleteAccount = async () => {
+    // Get confirmation first before deleting
+    const confirmDelete = confirm("Are you sure you want to delete your account? All relevant data associated with your account will be deleted!");
+    if (confirmDelete) {       
+        try {
+            const deleted = await authStore.deleteUserAccount();
+            if (deleted) {
+                alert("User deleted! You will be logged out now.");
+                router.push("/");
+            }
+        } catch (error) {
+            alert("Unable to delete account now: " + error.message);
+        }
+    }
+}
 </script>
 
 <style scoped>
