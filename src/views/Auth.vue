@@ -19,7 +19,7 @@
       
       <div v-if="showSignUp" class="field">
         <label for="confirm-password">*Confirm Password</label>
-        <input type="confirm-password" v-model="confirmPassword" placeholder="Re-enter password" required />
+        <input type="password" v-model="confirmPassword" placeholder="Re-enter password" required />
       </div>
 
       <!-- Display name field -->
@@ -84,11 +84,13 @@ const handleAuth = async () => {
     const validPassword = isValidPassword(password.value);
     if (validPassword !== true) {
       alert(validPassword);
+      loading.value = false;
       return;
     }
-
+    
     if (password.value != confirmPassword.value) {
       alert("Passwords do not match!");
+      loading.value = false;
       return;
     }
 
@@ -99,9 +101,6 @@ const handleAuth = async () => {
       loading.value = false;
       return;
     }
-
-    loading.value = false;
-    return;
   }
 
   // If password validated
