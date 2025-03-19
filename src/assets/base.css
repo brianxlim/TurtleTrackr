@@ -23,6 +23,12 @@
   --color-accent-medium: #A9C4EA;
   --color-accent-light: #EAA9BA;
 
+  /* Category Colors*/
+  --color-category-food: #6F9BD1;
+  --color-category-travel: #B394C6;
+  --color-category-shopping: #E08E99;
+  --color-category-others:#96BE8C;
+
   /* Font Families */
   --font-logo: 'Passion One', serif;
   --font-body: 'Poppins', sans-serif;

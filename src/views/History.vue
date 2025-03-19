@@ -1,16 +1,16 @@
 <template>
     <div class="p-6">
-      <h1 class="text-2xl font-bold mb-4">Expense History</h1>
-      <AllExpenses />
+      <h1 class="text-2xl font-bold mb-4">Spending History</h1>
+      <ExpenseList />
     </div>
   </template>
   
   <script>
-  import AllExpenses from "@/components/TransactionTable.vue"; // Adjust path if needed
+  import ExpenseList from "@/components/ExpenseList.vue"; // Adjust path if needed
   
   export default {
     components: {
-      AllExpenses,
+      ExpenseList,
     },
   };
   </script>
