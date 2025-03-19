@@ -90,7 +90,19 @@ export default {
         highlights: "",
       };
     },
+    validateForm() {
+      // Check if all required fields are filled out
+      if (!this.formData.title || !this.formData.amount || !this.formData.date || !this.formData.category) {
+        alert("Please fill in all required fields: Title, Amount, Date, and Category.");
+        return false;
+      }
+      return true;
+    },
     async savetofs() {
+      // Validate the form before saving data
+      if (!this.validateForm()) {
+        return; // Stop if the form is invalid
+      }
       console.log("IN AC - Saving Data...");
       const user = auth.currentUser;
       if(!user) {
@@ -112,7 +124,6 @@ export default {
 
         console.log("✅ Document successfully written!");
 
-        this.resetForm();
         this.closeModal();
       } catch (error) {
         console.error("❌ Error adding document: ", error);

@@ -22,7 +22,7 @@
   </template>
   
   <script>
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs, query, orderBy } from "firebase/firestore";
 import { db } from "@/firebase";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 
@@ -54,7 +54,10 @@ export default {
       console.log(`🔍 Fetching expenses for user: ${this.user.uid}`);
 
       try {
-        const q = query(collection(db, "Users", this.user.uid, "Expenses"));
+        const q = query(collection(db, "Users", this.user.uid, "Expenses"),
+          orderBy("Date", "desc"), 
+          orderBy("createdAt", "desc") 
+        );
         const snapshot = await getDocs(q);
         let userExpenses = [];
 
