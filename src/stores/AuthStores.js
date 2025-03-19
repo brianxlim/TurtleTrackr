@@ -84,7 +84,40 @@ export const useAuthStore = defineStore("authStore", () => {
 
     // TODO: Update user avatar
     const updateUserAvatar = async (avatarURL) => {
+        try {
+            const currentUser = auth.currentUser;
+            if (!currentUser) throw new Error("No authenticated user found");
 
+            // Update profile in Firebase Auth
+            await updateProfile(currentUser, { photoURL: avatarURL });
+
+            // Update Firestore database
+            const userDocRef = doc(db, "Users", currentUser.uid);
+            await updateDoc(userDocRef, { photoURL: avatarURL });
+
+            // Update local user state
+            user.value.photoURL = avatarURL;
+        } catch (error) {
+            console.error("Error updating avatar:", error);
+        }
+    };
+
+    const updateUserPassword = async (currentPassword, newPassword) => {
+        try {
+            const currentUser = auth.currentUser;
+            if (!currentUser) throw new Error("No authenticated user found");
+
+            // Re-authenticate user before updating password
+            const credential = EmailAuthProvider.credential(currentUser.email, currentPassword);
+            await reauthenticateWithCredential(currentUser, credential);
+
+            // Update password in Firebase Auth
+            await updatePassword(currentUser, newPassword);
+            alert("Password updated successfully!");
+        } catch (error) {
+            console.error("Error updating password:", error);
+            alert(error.message);
+        }
     };
 
     return {
