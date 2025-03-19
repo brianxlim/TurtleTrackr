@@ -8,6 +8,8 @@ import {
     updateProfile, 
     signInWithPopup,
     GoogleAuthProvider,
+    updatePassword,
+    deleteUser,
 } from "firebase/auth";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { auth, db, googleProvider } from "@/firebase";
@@ -84,6 +86,21 @@ export const useAuthStore = defineStore("authStore", () => {
         }
     };
 
+    // Delete user account
+    const deleteUserAccount = async () => {
+        if (auth.currentUser) {
+            try {
+                // TODO: Delete all of user's details in Firestore as well, such as his membership in groups, expenses, etc
+                await deleteUser(auth.currentUser);
+                return true;
+            } catch (error) {
+                throw error;
+            }
+        }
+
+        return false;
+    }
+
     // TODO: Update user avatar
     const updateUserAvatar = async (avatarURL) => {
         try {
@@ -118,7 +135,7 @@ export const useAuthStore = defineStore("authStore", () => {
             alert("Password updated successfully!");
         } catch (error) {
             console.error("Error updating password:", error);
-            alert(error.message);
+            return error;
         }
     };
 
@@ -144,5 +161,6 @@ export const useAuthStore = defineStore("authStore", () => {
         logInWithEmailAndPassword,
         logUserOut,
         updateUserAvatar,
+        deleteUserAccount,
     };
 });

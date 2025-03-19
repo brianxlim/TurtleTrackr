@@ -5,13 +5,15 @@
     <form @submit.prevent="handleAuth">
       <!-- Email field -->
       <div class="field">
-        <label for="email">*Email</label>
+        <label v-if="showSignUp" for="email">*Email</label>
+        <label v-else for="email">Email</label>
         <input type="email" v-model="email" placeholder="john_doe@gmail.com" required />
       </div>
 
       <!-- Password field -->
       <div class="field">
-        <label for="password">*Password</label>
+        <label v-if="showSignUp" for="password">*Password</label>
+        <label v-else for="password">Password</label>
         <input type="password" v-model="password" placeholder="Enter password" required />
       </div>
       
