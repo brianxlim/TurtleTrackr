@@ -34,7 +34,7 @@
   >
     <template #container="{ closeCallback }">
       <div class="drawer-container">
-        <nav v-if="isAuthenticated" class="drawer-nav">
+        <nav v-if="authStore.user.value" class="drawer-nav">
           <router-link class="drawer-nav-link" to="/" @click="closeDrawer">Home</router-link>
           <router-link class="drawer-nav-link" to="/family" @click="closeDrawer">Family</router-link>
           <router-link class="drawer-nav-link" to="/history" @click="closeDrawer">History</router-link>
@@ -55,13 +55,12 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import Drawer from 'primevue/drawer';
 import 'primeicons/primeicons.css';
 import Logo from "@/components/NavBar/Logo.vue";
-import { auth } from '@/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
+import { useAuthStore } from '@/stores/AuthStores';
 
 // Define reactive state variables
 const visibleDrawer = ref(false);
 const windowWidth = ref(window.innerWidth);
-const isAuthenticated = ref(false);
+const authStore = useAuthStore();
 
 // Handle window resize events
 const handleResize = () => {
@@ -70,17 +69,15 @@ const handleResize = () => {
 
 onMounted(() => {
   window.addEventListener("resize", handleResize);
-  onAuthStateChanged(auth, (user) => {
-    isAuthenticated.value = !!user;
-  });
 });
 
 onUnmounted(() => {
   window.removeEventListener("resize", handleResize);
 });
 
-// Computed property for determining mobile view
+// Computed property for determining mobile view and auth state changes
 const isMobile = computed(() => windowWidth.value < 800);
+const isAuthenticated = computed(() => !!authStore.user);
 
 // Functions to toggle and close the Drawer
 const toggleDrawer = () => {
