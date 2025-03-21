@@ -37,7 +37,7 @@ export const useAuthStore = defineStore("authStore", () => {
                 }
             }
         }
-        
+
         user.value = firebaseUser;
     });
 
@@ -89,15 +89,23 @@ export const useAuthStore = defineStore("authStore", () => {
         try {
             const userCredential = await signInWithPopup(auth, googleProvider);
             user.value = userCredential.user; // signed-in user info
-    
-            // Create new Firestore entry
-            await setDoc(doc(db, FIRESTORE_USERS_DB_REF, userCredential.user.uid), { displayName: userCredential.user.displayName });
+        
+            const userDocRef = doc(db, FIRESTORE_USERS_DB_REF, userCredential.user.uid);
+            const userDocSnap = await getDoc(userDocRef);
+        
+            // Only create a new document if one does not exist
+            if (!userDocSnap.exists()) {
+              await setDoc(userDocRef, {
+                displayName: userCredential.user.displayName,
+              });
+            }
+            
             router.push("/home");
             return true;
-        } catch (error) {
+          } catch (error) {
             throw error;
-        }
-    }
+          }
+    };
 
     // Log the user out
     const logUserOut = async () => {
