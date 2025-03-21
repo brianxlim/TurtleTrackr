@@ -1,24 +1,78 @@
 <template>
     <div class="main">
-        <h1>Welcome back, {{ displayName }}</h1>
+        <header>
+            <!--Avatar container-->
+            <div class="avatar-container">
+                <img :src="turtleSrc" id="avatar" />
+            </div>
+            <!--Profile Info: includes name of user + editing profile button-->
+            <div class="profile-info">
+                <h2>{{ displayName }}</h2>
+            </div>
+        </header>
+        <button id="edit-profile-button" @click="goToCustomisation">Edit Profile</button>
+        <!--Email and Password-->
+        <div class="profile-details">
+            <label>Email:</label>
+            <input type="text" :value="email" disabled />
+            
+            <label>Password:</label>
+            <div class="input-container">
+                <input type="password" value="********" disabled />
+                <span id="change-password-text" @click="goToChangePassword">Change Password</span>
+            </div>
+        </div>
 
         <div class="button-container">
-            <button id="logout-button" @click="signOutUser">Log out</button>
-            <button id="delete-account-button" @click="">Delete Account</button>
+            <button id="logout-button" @click="signOutUser">Logout</button>
+            <button id="delete-account-button" @click="deleteAccount">Delete Account</button>
         </div>
     </div>
 </template>
 
+
 <script setup>
-import { computed } from 'vue';
+import { ref, watch, computed } from 'vue';
 import { useAuthStore } from '@/stores/AuthStores';
 
 const authStore = useAuthStore();
 const displayName = computed(() => authStore.user?.displayName || "Guest");
+const email = computed(() => authStore.user?.email || "");
+
+// Default image URL
+const DEFAULT_AVATAR = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSpwxCN33LtdMLbWdhafc4HxabqpaU0qVbDxQ&s";
+
+// Reactive reference for the avatar source
+const turtleSrc = ref(DEFAULT_AVATAR);
+
+// Watch for changes in `authStore.user`
+watch(() => authStore.user, (newUser) => {
+    if (newUser && newUser.selectedTurtle && newUser.selectedTurtle.turtleFilename) {
+        turtleSrc.value = `/turtles/${newUser.selectedTurtle.turtleFilename}`;
+    } else {
+        turtleSrc.value = DEFAULT_AVATAR;
+    }
+}, { immediate: true }); // Run immediately in case `authStore.user` is already set
 
 const signOutUser = async () => {
     await authStore.logUserOut(); 
 };
+
+const deleteAccount = async () => {
+    // Get confirmation first before deleting
+    const confirmDelete = confirm("Are you sure you want to delete your account? All relevant data associated with your account will be deleted!");
+    if (confirmDelete) {       
+        try {
+            const deleted = await authStore.deleteUserAccount();
+            if (deleted) {
+                alert("User deleted! You will be logged out now.");
+                router.push("/");
+            }
+        } catch (error) {
+            alert("Unable to delete account now: " + error.message);
+        }
+    }
+}
 </script>
 
 <style scoped>
@@ -26,8 +80,93 @@ const signOutUser = async () => {
     padding: var(--padding-body);
 }
 
+header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.avatar-container {
+    width: 10rem;
+    height: 8rem;
+    background-color: var(--color-accent-medium); /* Customize the background color */
+    border-radius: 50%; /* Makes the background a perfect circle */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#avatar {
+    width: 8rem;
+    height: 6rem;
+    border-radius: 50%;
+}
+
+#edit-profile-button {
+    color: black;
+    background: none;
+    border: none;
+    font-size: 1rem;
+    text-decoration: underline;
+    cursor: pointer;
+    display: block;
+    margin-top: 0.5rem;
+    text-align: center;
+    padding-left: 1.8rem;
+}
+
+#edit-profile-button:hover {
+    color: var(--color-accent-light);
+}
+
+.profile-info {
+    display: flex;
+    justify-content: left;
+    align-items: center;
+    background-color: var(--color-secondary-medium); /* Customize color */
+    width: 100%; /* Make it span the entire width */
+    height: 3rem; /* Adjust height to be smaller */
+    border-radius: 10px;
+    font-weight: bold;
+    font-size: 1.2rem;
+    color: black; /* Adjust text color */
+    padding-left: 1.5rem;
+}
+
+
+.profile-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 1rem 0;
+}
+
+input {
+    border: 1px solid #ddd;
+    background-color: lightgrey;
+    border-radius: 10px;
+    padding: 0.5rem;
+    width: 100%;
+    font-size: 1rem;
+}
+
+#change-password-text {
+    position: absolute;
+    right: 10px; /* Aligns text inside the input field */
+    font-size: 0.8rem;
+    color: black;
+    text-decoration: underline;
+    cursor: pointer;
+    padding-right: 4rem;
+    padding-top: 0.5rem;
+}
+
+#change-password-text:hover {
+    color: var(--color-accent-light);
+}
+
 button {
-    border-radius: 1cqb;
+    border-radius: 1rem;
     border: 1px solid #ddd;
     padding: 0.5rem 1rem;
     font-family: 'Poppins';
@@ -35,17 +174,39 @@ button {
     color: white;
 }
 
+button:hover {
+    transition: ease-in-out 0.3s;
+    cursor: pointer;
+}
+
 .button-container {
     display: flex;
     gap: 3rem;
 }
 
+
+
+#change-password-button {
+    background-color: var(--color-secondary);
+}
+
 #logout-button {
     background-color: var(--color-accent-dark);
+    color: black;
+}
+
+#logout-button:hover {
+    background-color: var(--color-main-dark);
+    color: white;
 }
 
 #delete-account-button {
+    background-color: var(--color-accent-light);
+    color: black;
+}
+
+#delete-account-button:hover {
     background-color: rgb(161, 57, 57);
+    color: white;
 }
 </style>
-  

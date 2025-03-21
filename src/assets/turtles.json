@@ -1,0 +1,66 @@
+[
+    {
+        "turtleName": "Albino Turtle",
+        "turtleFilename": "albinoTurtle.png"
+    },
+    {
+        "turtleName": "Albino Turtle 2",
+        "turtleFilename": "albinoTurtleCatEars.png"
+    },
+    {
+        "turtleName": "Albino Turtle 3",
+        "turtleFilename": "albinoTurtleStrawHat.png"
+    },
+    {
+        "turtleName": "Albino Turtle 4",
+        "turtleFilename": "albinoTurtleTopHat.png"
+    },
+    {
+        "turtleName": "Mata Turtle",
+        "turtleFilename": "mataTurtle.png"
+    },
+    {
+        "turtleName": "Mata Turtle 2",
+        "turtleFilename": "mataTurtleCatEars.png"
+    },
+    {
+        "turtleName": "Mata Turtle 3",
+        "turtleFilename": "mataTurtleStrawHat.png"
+    },
+    {
+        "turtleName": "Mata Turtle 4",
+        "turtleFilename": "mataTurtleTopHat.png"
+    },
+    {
+        "turtleName": "Pig Turtle",
+        "turtleFilename": "pigTurtle.png"
+    },
+    {
+        "turtleName": "Pig Turtle 2",
+        "turtleFilename": "pigTurtleCatEars.png"
+    },
+    {
+        "turtleName": "Pig Turtle 3",
+        "turtleFilename": "pigTurtleStrawHat.png"
+    },
+    {
+        "turtleName": "Pig Turtle 4",
+        "turtleFilename": "pigTurtleTopHat.png"
+    },
+    {
+        "turtleName": "Spurred Tortoise",
+        "turtleFilename": "spurredTortoise.png"
+    },
+    {
+        "turtleName": "Spurred Tortoise 2",
+        "turtleFilename": "spurredTortoiseCatEars.png"
+    },
+    {
+        "turtleName": "Spurred Tortoise 3",
+        "turtleFilename": "spurredTortoiseStrawHat.png"
+    },
+    {
+        "turtleName": "Spurred Tortoise 4",
+        "turtleFilename": "spurredTortoiseTopHat.png"
+    }
+]

@@ -1,4 +1,4 @@
-<template>
+<!-- <template>
     <div>
       <table class="transaction-table">
         <thead>
@@ -101,4 +101,4 @@ export default {
 .transaction-table tr:hover {
   background-color: #f1f1f1;
 }
-</style>
+</style> -->

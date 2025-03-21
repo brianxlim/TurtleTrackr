@@ -1,6 +1,6 @@
 <template>
     <div class="logo">
-        <img src="@/assets/turtles/spurredTortoise.png" id="logo-turtle" alt="Turtle Logo"/>
+        <img src="/turtles/spurredTortoise.png" id="logo-turtle" alt="Turtle Logo"/>
         <p>TurtleTrackr</p>
     </div>
 </template>

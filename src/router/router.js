@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import Home from '@/views/Home.vue';
 import Family from '@/views/Family.vue';
+import FamilyDetails from "@/views/FamilyDetails.vue";
 import History from '@/views/History.vue';
 import Goals from '@/views/Goals.vue';
 import Profile from '@/views/Profile.vue';
@@ -29,6 +30,13 @@ const routes = [
     path: '/family',
     name: 'Family',
     component: Family,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/family/:id',
+    name: 'FamilyDetails',
+    component: FamilyDetails,
+    props: true,
     meta: { requiresAuth: true }
   },
   { 
