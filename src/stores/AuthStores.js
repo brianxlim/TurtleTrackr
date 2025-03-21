@@ -7,7 +7,6 @@ import {
     signOut, 
     updateProfile, 
     signInWithPopup,
-    GoogleAuthProvider,
     updatePassword,
     deleteUser,
 } from "firebase/auth";
@@ -15,20 +14,30 @@ import { doc, setDoc, getDoc } from "firebase/firestore";
 import { auth, db, googleProvider } from "@/firebase";
 import router from "@/router/router";
 
+const FIRESTORE_USERS_DB_REF = "Users"
+
 export const useAuthStore = defineStore("authStore", () => {
     const user = ref(null);
+    const showAvatarModal = ref(false);
 
       // Listen to auth state changes and merge custom data from Firestore
     onAuthStateChanged(auth, async (firebaseUser) => {
         if (firebaseUser) {
-            const userDocRef = doc(db, "Users", firebaseUser.uid);
+            const userDocRef = doc(db, FIRESTORE_USERS_DB_REF, firebaseUser.uid);
             const userDoc = await getDoc(userDocRef);
-        if (userDoc.exists()) {
-            const userData = userDoc.data();
-            firebaseUser.displayName = userData.displayName;
-            firebaseUser.selectedTurtle = userData.selectedTurtle;
+            if (userDoc.exists()) {
+                const userData = userDoc.data();
+                firebaseUser.displayName = userData.displayName;
+
+                if (!userData.selectedTurtle) {
+                    showAvatarModal.value = true;
+                } else {
+                    firebaseUser.selectedTurtle = userData.selectedTurtle;
+                    showAvatarModal.value = false;
+                }
+            }
         }
-        }
+        
         user.value = firebaseUser;
     });
 
@@ -39,8 +48,8 @@ export const useAuthStore = defineStore("authStore", () => {
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             await updateProfile(userCredential.user, { displayName });
         
-        // Create a new document in the "Users" collection with the user's UID
-        await setDoc(doc(db, "Users", userCredential.user.uid), { displayName, selectedTurtle });
+        // Create new Firestore entry
+        await setDoc(doc(db, FIRESTORE_USERS_DB_REF, userCredential.user.uid), { displayName, selectedTurtle });
 
         } catch (error) {
             console.error("Registration error:", error);
@@ -49,7 +58,7 @@ export const useAuthStore = defineStore("authStore", () => {
         }
     };
 
-    // Sign in user with email and password
+    // Log in user with email and password
     const logInWithEmailAndPassword = async (email, password) => {
         try {
             // Store user in Pinia store
@@ -57,7 +66,7 @@ export const useAuthStore = defineStore("authStore", () => {
             user.value = userCredential.user;
 
             // Fetch additional custom fields from Firestore
-            const userDocRef = doc(db, "Users", user.value.uid);
+            const userDocRef = doc(db, FIRESTORE_USERS_DB_REF, user.value.uid);
             const userDoc = await getDoc(userDocRef);
             if (userDoc.exists()) {
                 const userData = userDoc.data();
@@ -75,6 +84,21 @@ export const useAuthStore = defineStore("authStore", () => {
         }
     };
 
+    // Google log in
+    const logInWithGoogle = async () => {
+        try {
+            const userCredential = await signInWithPopup(auth, googleProvider);
+            user.value = userCredential.user; // signed-in user info
+    
+            // Create new Firestore entry
+            await setDoc(doc(db, FIRESTORE_USERS_DB_REF, userCredential.user.uid), { displayName: userCredential.user.displayName });
+            router.push("/home");
+            return true;
+        } catch (error) {
+            throw error;
+        }
+    }
+
     // Log the user out
     const logUserOut = async () => {
         try {
@@ -87,10 +111,10 @@ export const useAuthStore = defineStore("authStore", () => {
     };
 
     // Delete user account
+    // TODO: Delete all of user's details in Firestore as well, such as his membership in groups, expenses, etc
     const deleteUserAccount = async () => {
         if (auth.currentUser) {
             try {
-                // TODO: Delete all of user's details in Firestore as well, such as his membership in groups, expenses, etc
                 await deleteUser(auth.currentUser);
                 return true;
             } catch (error) {
@@ -111,7 +135,7 @@ export const useAuthStore = defineStore("authStore", () => {
             await updateProfile(currentUser, { photoURL: avatarURL });
 
             // Update Firestore database
-            const userDocRef = doc(db, "Users", currentUser.uid);
+            const userDocRef = doc(db, FIRESTORE_USERS_DB_REF, currentUser.uid);
             await updateDoc(userDocRef, { photoURL: avatarURL });
 
             // Update local user state
@@ -139,26 +163,12 @@ export const useAuthStore = defineStore("authStore", () => {
         }
     };
 
-    // Google sign in
-    const logInWithGoogle = async () => {
-        signInWithPopup(auth, googleProvider)
-        .then((result) => {
-            const credential = GoogleAuthProvider.credentialFromResult(result); // returns a Google Access Token
-            const token = credential.accessToken;
-            const user = result.user; // signed-in user info
-        }) .catch((error) => {
-            // TODO: Handle errors
-            const errorCode = error.code;
-            const errorMessage = error.message;
-            const email = error.customData.email;
-            const credential = GoogleAuthProvider.credentialFromError(error); // AuthCredential type that was used
-        });
-    }
-
     return {
         user,
+        showAvatarModal,
         registerUserWithEmailPassword,
         logInWithEmailAndPassword,
+        logInWithGoogle,
         logUserOut,
         updateUserAvatar,
         deleteUserAccount,
