@@ -62,9 +62,5 @@
     {
         "turtleName": "Spurred Tortoise 4",
         "turtleFilename": "spurredTortoiseTopHat.png"
-    },
-    {
-        "turtleName": "Randomise!",
-        "turtleFilename": "unknownTurtle.png"
     }
 ]

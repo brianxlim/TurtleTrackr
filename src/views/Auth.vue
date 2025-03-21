@@ -5,29 +5,36 @@
     <form @submit.prevent="handleAuth">
       <!-- Email field -->
       <div class="field">
-        <label for="email">Email</label>
+        <label v-if="showSignUp" for="email">*Email</label>
+        <label v-else for="email">Email</label>
         <input type="email" v-model="email" placeholder="john_doe@gmail.com" required />
       </div>
 
       <!-- Password field -->
       <div class="field">
-        <label for="password">Password</label>
+        <label v-if="showSignUp" for="password">*Password</label>
+        <label v-else for="password">Password</label>
         <input type="password" v-model="password" placeholder="Enter password" required />
+      </div>
+      
+      <div v-if="showSignUp" class="field">
+        <label for="confirm-password">*Confirm Password</label>
+        <input type="password" v-model="confirmPassword" placeholder="Re-enter password" required />
       </div>
 
       <!-- Display name field -->
       <div v-if="showSignUp" class="field">
-        <label for="display-name">Display Name</label>
+        <label for="display-name">*Display Name</label>
         <input type="display-name" v-model="displayName" placeholder="John Doe" required />
       </div>
 
       <!-- Avatar field -->
       <section id="avatar" v-if="showSignUp" class="field">
-        <label for="avatar">Select Avatar</label>
+        <label for="avatar">*Select Avatar</label>
         <AvatarSelection @selected-turtle="handleSelectedTurtle" />
       </section>
 
-      <!-- Sign up button -->
+      <!-- Submit button -->
       <button type="submit" :disabled="loading">
         <span v-if="loading" class="spinner">
           <i class="pi pi-spin pi-spinner" style="font-size: 1rem"></i>
@@ -35,6 +42,10 @@
         <span v-else>{{ showSignUp ? 'Sign Up' : 'Log In' }}</span>
       </button>
     </form>
+    
+    <!-- Enable Google log in/registration -->
+    <AltAuthMethod />
+
     <p>
       <span v-if="!showSignUp">Don't have an account? </span>
       <span v-else>Already have an account? </span>
@@ -50,9 +61,11 @@ import { ref, watchEffect } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '@/stores/AuthStores';
 import AvatarSelection from '@/components/AvatarSelection.vue';
+import AltAuthMethod from '@/components/AltAuthMethod.vue';
 
 const email = ref("");
 const password = ref("");
+const confirmPassword = ref("");
 const displayName = ref("");
 const selectedTurtle = ref(null);
 const showSignUp = ref(false);
@@ -71,22 +84,28 @@ const handleAuth = async () => {
   if (loading.value) return;
   loading.value = true;
 
-  // Password validation if sign up
-  if (showSignUp.value && password.value.length < 6) {
-    alert("Password must be at least 6 characters long.");
-    loading.value = false;
-    return;
-  }
+  // Password and avatar validation if sign up
+  if (showSignUp.value) {
+    const validPassword = isValidPassword(password.value);
+    if (validPassword !== true) {
+      alert(validPassword);
+      loading.value = false;
+      return;
+    }
+    
+    if (password.value != confirmPassword.value) {
+      alert("Passwords do not match!");
+      loading.value = false;
+      return;
+    }
 
-  // Make avatar selection required during sign up
-  if (showSignUp.value && !selectedTurtle.value) {
-    alert("Please select an avatar!");
-
-    // Scroll back to avatar field if no avatar selected
-    const avatarSection = document.getElementById("avatar");
-    avatarSection.scrollIntoView({ behavior: "smooth", block: "center" });
-    loading.value = false;
-    return;
+    if (!selectedTurtle.value) {
+      alert("Please select an avatar!");
+      const avatarSection = document.getElementById("avatar"); // Scroll back to avatar field if no avatar selected
+      avatarSection.scrollIntoView({ behavior: "smooth", block: "center" });
+      loading.value = false;
+      return;
+    }
   }
 
   // If password validated
@@ -114,6 +133,33 @@ const toggleAuthMode = () => {
 const handleSelectedTurtle = (turtle) => {
   selectedTurtle.value = turtle;
 }
+
+// Password validator
+const isValidPassword = (password) => {
+  const errors = [];
+
+  if (password.length < 6) {
+    errors.push("be at least 6 characters long");
+  }
+  if (!/[A-Z]/.test(password)) {
+    errors.push("contain at least 1 uppercase letter");
+  }
+  if (!/[a-z]/.test(password)) {
+    errors.push("contain at least 1 lowercase letter");
+  }
+  if (!/[0-9]/.test(password)) {
+    errors.push("contain at least 1 number");
+  }
+  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+    errors.push("contain at least 1 special character");
+  }
+
+  if (errors.length === 0) {
+    return true;
+  }
+
+  return "Password must " + errors.join(", ") + ".";
+}
 </script>
 
 <style scoped>
@@ -134,6 +180,7 @@ form {
   gap: 2rem;
   align-items: flex-start;
   width: 100%;
+  margin: 0 0 2rem 0;
 }
 
 .field {
@@ -167,7 +214,6 @@ button {
   cursor: pointer;
   font-size: 1rem;
   font-family: 'Poppins';
-  margin: 0 0 1rem 0;
   align-self: center;
 }
 
