@@ -1,9 +1,44 @@
 <template>
   <div class="expense-list">
-    <div v-for="(group, date) in groupedExpenses" :key="date" class="date-group">
-      <h2 class="date-header">{{ formatDate(date) }}</h2>
-      <ExpenseCard v-for="(expense, index) in group" :key="index" :expense="expense" @delete-expense="deleteExpense"
-        @edit-expense="openModalForEditing" />
+    <div class="sort-options">
+      <label for="sortBy">Sort by:</label>
+      <select v-model="sortOption" @change="sortExpenses">
+        <option value="date-desc">Date (Newest to Oldest)</option>
+        <option value="date-asc">Date (Oldest to Newest)</option>
+        <option value="amount-desc">Amount (Highest to Lowest)</option>
+        <option value="amount-asc">Amount (Lowest to Highest)</option>
+      </select>
+    </div>
+
+    <div v-if="expenses.length === 0" class="no-history">
+      No history available. Start adding your expenses now!
+    </div>
+    
+    <div v-else>
+      <!-- If sorting by amount, don't group by date, just show all expenses in one list -->
+      <div v-if="sortOption.includes('amount')">
+        <ExpenseCard 
+          v-for="(expense, index) in expenses" 
+          :key="index" 
+          :expense="expense" 
+          @delete-expense="deleteExpense"
+          @edit-expense="openModalForEditing" 
+        />
+      </div>
+
+      <!-- Grouped expenses by date (only when not sorting by amount) -->
+      <div v-else>
+        <div v-for="(group, date) in groupedExpenses" :key="date" class="date-group">
+          <h2 class="date-header">{{ formatDate(date) }}</h2>
+          <ExpenseCard 
+            v-for="(expense, index) in group" 
+            :key="index" 
+            :expense="expense" 
+            @delete-expense="deleteExpense"
+            @edit-expense="openModalForEditing" 
+          />
+        </div>
+      </div>
     </div>
   </div>
 
@@ -43,19 +78,20 @@
           </div>
         </div>
         <div class="button-group">
-          <button class="add-expense" id="saveButton" @click.prevent="savetofs()">Save</button>
+          <button class="add-expense" id="saveButton" @click.prevent="savetofs">Save</button>
           <button @click="closeModal" class="close-button">Cancel</button>
         </div>
       </form>
     </div>
   </div>
 </template>
-  
+
 <script>
 import ExpenseCard from "./ExpenseCard.vue";
 import { collection, getDocs, query, orderBy, deleteDoc, doc, addDoc, updateDoc } from "firebase/firestore";
 import { db } from "@/firebase";
-import { getAuth, onAuthStateChanged } from "firebase/auth";
+import { auth } from "@/firebase";
+import { onAuthStateChanged } from "firebase/auth";
 
 export default {
   components: { ExpenseCard },
@@ -64,6 +100,7 @@ export default {
       expenses: [],
       user: null,
       isModalOpen: false,
+      sortOption: "date-desc", // Default sorting option
       formData: {
         id: "",
         title: "",
@@ -76,16 +113,20 @@ export default {
   },
   computed: {
     groupedExpenses() {
-      return this.expenses.reduce((acc, expense) => {
+      // Group expenses by date only when sorting by date
+      if (this.sortOption.includes("amount")) return {}; // No grouping if sorting by amount
+
+      const grouped = this.expenses.reduce((acc, expense) => {
         const date = expense.Date.split("T")[0]; // Extract YYYY-MM-DD
         if (!acc[date]) acc[date] = [];
         acc[date].push(expense);
         return acc;
       }, {});
+
+      return grouped;
     },
   },
   async mounted() {
-    const auth = getAuth();
     onAuthStateChanged(auth, async (user) => {
       if (user) {
         this.user = user;
@@ -96,16 +137,35 @@ export default {
   methods: {
     async fetchUserExpenses() {
       if (!this.user) return;
+
       try {
         const q = query(
           collection(db, "Users", this.user.uid, "Expenses"),
-          orderBy("Date", "desc"),
-          orderBy("createdAt", "desc")
+          orderBy("Date", "desc")
         );
         const snapshot = await getDocs(q);
         this.expenses = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        this.sortExpenses(); // Apply sorting after data is fetched
       } catch (error) {
-        console.error("❌ Error fetching expenses:", error);
+        console.error("Error fetching expenses:", error);
+      }
+    },
+    sortExpenses() {
+      switch (this.sortOption) {
+        case "date-asc":
+          this.expenses.sort((a, b) => new Date(a.Date) - new Date(b.Date));
+          break;
+        case "date-desc":
+          this.expenses.sort((a, b) => new Date(b.Date) - new Date(a.Date));
+          break;
+        case "amount-asc":
+          this.expenses.sort((a, b) => a.Amount - b.Amount);
+          break;
+        case "amount-desc":
+          this.expenses.sort((a, b) => b.Amount - a.Amount);
+          break;
+        default:
+          break;
       }
     },
     formatDate(date) {
@@ -121,12 +181,9 @@ export default {
       if (confirm(`Are you sure you want to delete "${expense.Title}"?`)) {
         try {
           await deleteDoc(doc(db, "Users", this.user.uid, "Expenses", expense.id));
-          console.log(`✅ Expense "${expense.Title}" deleted successfully.`);
-
-          // Remove from local state
-          this.expenses = this.expenses.filter(e => e.id !== expense.id);
+          this.expenses = this.expenses.filter(e => e.id !== expense.id); // Update local state
         } catch (error) {
-          console.error("❌ Error deleting expense:", error);
+          console.error("Error deleting expense:", error);
         }
       }
     },
@@ -154,8 +211,7 @@ export default {
       };
     },
     async savetofs() {
-      const user = getAuth().currentUser;
-      if (!user) {
+      if (!this.user) {
         alert("Please log in to save the expense.");
         return;
       }
@@ -164,20 +220,8 @@ export default {
 
       try {
         if (id) {
-          // Update existing expense without overwriting unchanged fields
-          const expenseRef = doc(db, "Users", user.uid, "Expenses", id);
+          const expenseRef = doc(db, "Users", this.user.uid, "Expenses", id);
           await updateDoc(expenseRef, {
-            ...(title && { Title: title }),
-            ...(amount && { Amount: amount }),
-            ...(date && { Date: date }),
-            ...(category && { Category: category }),
-            ...(highlights !== undefined ? { Highlights: highlights } : {}), // Ensure no undefined values
-            createdAt: new Date(),
-          });
-          console.log("✅ Expense updated successfully!");
-        } else {
-          // Add new expense
-          await addDoc(collection(db, "Users", user.uid, "Expenses"), {
             Title: title,
             Amount: amount,
             Date: date,
@@ -185,18 +229,27 @@ export default {
             Highlights: highlights ?? "",
             createdAt: new Date(),
           });
+          this.fetchUserExpenses(); // Fetch updated expenses
+        } else {
+          await addDoc(collection(db, "Users", this.user.uid, "Expenses"), {
+            Title: title,
+            Amount: amount,
+            Date: date,
+            Category: category,
+            Highlights: highlights ?? "",
+            createdAt: new Date(),
+          });
+          this.fetchUserExpenses(); // Fetch updated expenses
         }
         this.closeModal();
-        window.location.reload(); // Refresh the page after saving
-        console.log("✅ Expense added successfully!");
       } catch (error) {
-        console.error("❌ Error saving expense:", error);
+        console.error("Error saving expense:", error);
       }
     }
   },
 };
 </script>
-  
+
 <style scoped>
 .expense-list {
   padding: 10px;
@@ -306,10 +359,34 @@ textarea {
   font-size: 16px;
 }
 
-.button-group {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 10px;
-  gap: 10px;
+.no-history {
+  text-align: center;
+  font-size: 18px;
+  color: #777;
+  margin-top: 20px;
+}
+.sort-options {
+  margin-bottom: 20px;
+}
+
+.sort-options label {
+  margin-right: 10px;
+}
+
+.sort-options select {
+  padding: 5px;
+}
+
+.sort-options {
+  margin-bottom: 20px;
+  
+}
+
+.sort-options label {
+  margin-right: 10px;
+}
+
+.sort-options select {
+  padding: 5px;
 }
 </style>
