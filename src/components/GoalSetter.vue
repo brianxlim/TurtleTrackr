@@ -26,7 +26,7 @@
   
         <div class="buttons">
           <button class="cancel" @click="$emit('close')">Cancel</button>
-          <button class="confirm" :disabled="totalPercentage !== 100" @click="confirmGoals">Confirm</button>
+          <button class="confirm" :disabled="totalPercentage !== 100 || editableTotalSet <= 0" @click="confirmGoals">Confirm</button>
         </div>
       </div>
     </div>
