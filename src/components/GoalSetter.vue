@@ -62,6 +62,7 @@ export default {
         const updated = this.editableCategories.map((c) => ({
           ...c,
           setAmount: parseFloat(this.calculatedAmount(c.percentage)),
+          amount: c.amount || 0,
         }));
         this.$emit("updateGoals", {
           categories: updated,
