@@ -7,12 +7,12 @@
         </div>
       </div>
     </div>
-  </template>
+</template>
   
-  <script>
-  import { Chart, ArcElement, Tooltip, Legend, DoughnutController } from "chart.js";
+<script>
+import { Chart, ArcElement, Tooltip, Legend, DoughnutController } from "chart.js";
   
-  export default {
+export default {
     props: ["totalSet", "totalSpent", "categories"],
     mounted() {
       this.createChart();
@@ -69,57 +69,34 @@
         this.chart.destroy();
       }
     },
-  };
-  </script>
+};
+</script>
   
-  <style scoped>
-  /* Wrapper to center everything */
-  .pie-chart-container {
+<style scoped>
+/* Wrapper to center everything */
+.pie-chart-container {
     display: flex;
     flex-direction: column;
     align-items: center;
-  }
+}
   
-  /* Pie chart should be centered */
-  .pie-chart {
+/* Pie chart should be centered */
+.pie-chart {
     position: relative;
     width: 300px;
     height: 300px;
     margin: 20px 50px 1px 50px;
-  }
+}
   
-  /* Turtle & text inside the chart */
-  .center-text {
+/* Text inside the chart */
+.center-text {
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
     text-align: center;
     color: #3d5538;
-  }
-  
-  /* Turtle is properly sized */
-  .center-text img {
-    width: 120px;
-    height: 120px;
-    object-fit: contain;
-  }
-  
-  /* Amount text styling */
-  .center-text p {
-    font-size: 18px;
-    font-weight: bold;
-    margin: 5px 0;
-    color: #3d5538;
-  }
-  
-  /* "February's Cash Flow" below the chart */
-  #cashflowMonth {
-    margin-top: 15px;
-    text-align: center;
-    color: #3d5538;
-    font-weight: bold;
-    font-size: 18px;
-  }
-  </style>
+}
+
+</style>
   
