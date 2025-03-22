@@ -17,10 +17,6 @@ export default {
         type: Object,
         required: true
       },
-      setAmount: {
-        type: Object,
-        required: true
-      }
     },
     computed: {
       progressWidth() {
