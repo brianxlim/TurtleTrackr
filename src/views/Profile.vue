@@ -10,7 +10,7 @@
                 <h2>{{ displayName }}</h2>
             </div>
         </header>
-        <button id="edit-profile-button" @click="goToCustomisation">Edit Profile</button>
+        <button id="edit-profile-button" @click="openEditProfile">Edit Profile</button>
         <!--Email and Password-->
         <div class="profile-details">
             <label>Email:</label>
@@ -27,22 +27,29 @@
             <button id="logout-button" @click="signOutUser">Logout</button>
             <button id="delete-account-button" @click="deleteAccount">Delete Account</button>
         </div>
+
+        <!-- Avatar Modal -->
+        <EditProfile
+            v-if="showEditProfile"
+            @close-modal="showEditProfile = false"
+            @avatar-updated="handleAvatarUpdate"
+        />
     </div>
 </template>
 
 
 <script setup>
 import { ref, watch, computed } from 'vue';
+import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/AuthStores';
+import EditProfile from '@/components/EditProfile.vue';
 
 const authStore = useAuthStore();
-const displayName = computed(() => authStore.user?.displayName || "Guest");
+const router = useRouter(); 
+const displayName = ref(authStore.user?.displayName || "Guest");
 const email = computed(() => authStore.user?.email || "");
 
-// Default image URL
 const DEFAULT_AVATAR = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSpwxCN33LtdMLbWdhafc4HxabqpaU0qVbDxQ&s";
-
-// Reactive reference for the avatar source
 const turtleSrc = ref(DEFAULT_AVATAR);
 
 // Watch for changes in `authStore.user`
@@ -52,7 +59,29 @@ watch(() => authStore.user, (newUser) => {
     } else {
         turtleSrc.value = DEFAULT_AVATAR;
     }
-}, { immediate: true }); // Run immediately in case `authStore.user` is already set
+}, { immediate: true });
+
+const showEditProfile = ref(false);
+const openEditProfile = () => {
+    showEditProfile.value = true;
+};
+
+const handleAvatarUpdate = (payload) => {
+  const { turtle, name } = payload;
+
+  if (turtle?.turtleFilename) {
+    turtleSrc.value = `/turtles/${turtle.turtleFilename}`;
+    authStore.user.selectedTurtle = turtle;
+  }
+
+  if (name) {
+    displayName.value = name;
+    authStore.user.displayName = name;
+  }
+
+  showEditProfile.value = false;
+};
+
 
 const signOutUser = async () => {
     await authStore.logUserOut(); 
@@ -73,6 +102,10 @@ const deleteAccount = async () => {
         }
     }
 }
+
+const goToChangePassword = () => {
+    router.push('/change-password');
+};
 </script>
 
 <style scoped>
@@ -89,8 +122,8 @@ header {
 .avatar-container {
     width: 10rem;
     height: 8rem;
-    background-color: var(--color-accent-medium); /* Customize the background color */
-    border-radius: 50%; /* Makes the background a perfect circle */
+    background-color: var(--color-accent-medium);
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -123,22 +156,28 @@ header {
     display: flex;
     justify-content: left;
     align-items: center;
-    background-color: var(--color-secondary-medium); /* Customize color */
-    width: 100%; /* Make it span the entire width */
-    height: 3rem; /* Adjust height to be smaller */
+    background-color: var(--color-secondary-medium);
+    width: 100%;
+    height: 3rem;
     border-radius: 10px;
     font-weight: bold;
     font-size: 1.2rem;
-    color: black; /* Adjust text color */
+    color: black;
     padding-left: 1.5rem;
 }
-
 
 .profile-details {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
     margin: 1rem 0;
+}
+
+.input-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
 }
 
 input {
@@ -152,12 +191,12 @@ input {
 
 #change-password-text {
     position: absolute;
-    right: 10px; /* Aligns text inside the input field */
+    right: 3px; /* Aligns text inside the input field */
     font-size: 0.8rem;
     color: black;
     text-decoration: underline;
     cursor: pointer;
-    padding-right: 4rem;
+    padding-right: 1rem;
     padding-top: 0.5rem;
 }
 
@@ -183,8 +222,6 @@ button:hover {
     display: flex;
     gap: 3rem;
 }
-
-
 
 #change-password-button {
     background-color: var(--color-secondary);
