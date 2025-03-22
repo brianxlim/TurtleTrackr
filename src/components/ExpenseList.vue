@@ -13,30 +13,20 @@
     <div v-if="expenses.length === 0" class="no-history">
       No history available. Start adding your expenses now!
     </div>
-    
+
     <div v-else>
       <!-- If sorting by amount, don't group by date, just show all expenses in one list -->
       <div v-if="sortOption.includes('amount')">
-        <ExpenseCard 
-          v-for="(expense, index) in expenses" 
-          :key="index" 
-          :expense="expense" 
-          @delete-expense="deleteExpense"
-          @edit-expense="openModalForEditing" 
-        />
+        <ExpenseCard v-for="(expense, index) in expenses" :key="index" :expense="expense" @delete-expense="deleteExpense"
+          @edit-expense="openModalForEditing" />
       </div>
 
       <!-- Grouped expenses by date (only when not sorting by amount) -->
       <div v-else>
         <div v-for="(group, date) in groupedExpenses" :key="date" class="date-group">
           <h2 class="date-header">{{ formatDate(date) }}</h2>
-          <ExpenseCard 
-            v-for="(expense, index) in group" 
-            :key="index" 
-            :expense="expense" 
-            @delete-expense="deleteExpense"
-            @edit-expense="openModalForEditing" 
-          />
+          <ExpenseCard v-for="(expense, index) in group" :key="index" :expense="expense" @delete-expense="deleteExpense"
+            @edit-expense="openModalForEditing" />
         </div>
       </div>
     </div>
@@ -46,21 +36,25 @@
   <div v-if="isModalOpen" class="modal-overlay" @click.self="closeModal">
     <div class="modal-content">
       <form id="expense-form">
-        <!-- Form content here -->
+        <!-- First Row: Title -->
         <div class="form-group">
           <label for="title">Title*</label>
-          <input type="text" id="title" v-model="formData.title" required />
+          <input type="text" id="title" v-model="formData.title" required>
         </div>
+
+        <!-- Second Row: Amount & Date -->
         <div class="form-row">
           <div class="form-group">
             <label for="amount">Amount*</label>
-            <input type="text" id="amount" v-model="formData.amount" required />
+            <input type="text" id="amount" v-model="formData.amount" required>
           </div>
           <div class="form-group">
             <label for="date">Date*</label>
-            <input type="date" id="date" v-model="formData.date" required />
+            <input type="date" id="date" v-model="formData.date" required>
           </div>
         </div>
+
+        <!-- Third Row: Category & Send Highlights -->
         <div class="form-row">
           <div class="form-group">
             <label for="category">Category*</label>
@@ -74,11 +68,13 @@
           </div>
           <div class="form-group">
             <label for="highlights">Send Highlights to:</label>
-            <input type="text" id="highlights" v-model="formData.highlights" placeholder="None" />
+            <input type="text" id="highlights" v-model="formData.highlights" placeholder="Optional">
           </div>
         </div>
+
+        <!-- Buttons -->
         <div class="button-group">
-          <button class="add-expense" id="saveButton" @click.prevent="savetofs">Save</button>
+          <button class="add-expense" id="saveButton" @click.prevent="savetofs()">Add</button>
           <button @click="closeModal" class="close-button">Cancel</button>
         </div>
       </form>
@@ -168,6 +164,22 @@ export default {
           break;
       }
     },
+    validateForm() {
+      // Check if all required fields are filled out
+      if (!this.formData.title || !this.formData.amount || !this.formData.date || !this.formData.category) {
+        alert("Please fill in all required fields: Title, Amount, Date, and Category.");
+        return false;
+      }
+
+      // Validate amount is a valid number and greater than 0
+      const amount = parseFloat(this.formData.amount);
+      if (isNaN(amount) || amount <= 0) {
+        alert("Please enter a valid amount greater than 0.");
+        return false;
+      }
+
+      return true;
+    },
     formatDate(date) {
       return new Date(date).toLocaleDateString("en-GB", {
         day: "numeric",
@@ -214,6 +226,9 @@ export default {
       if (!this.user) {
         alert("Please log in to save the expense.");
         return;
+      }
+      if (!this.validateForm()) {
+        return; // Stop if the form is invalid
       }
 
       const { id, title, amount, date, category, highlights } = this.formData;
@@ -365,6 +380,7 @@ textarea {
   color: #777;
   margin-top: 20px;
 }
+
 .sort-options {
   margin-bottom: 20px;
 }
@@ -379,7 +395,7 @@ textarea {
 
 .sort-options {
   margin-bottom: 20px;
-  
+
 }
 
 .sort-options label {
