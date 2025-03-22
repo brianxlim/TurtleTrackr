@@ -10,7 +10,7 @@
                 <h2>{{ displayName }}</h2>
             </div>
         </header>
-        <button id="edit-profile-button" @click="openAvatarModal">Edit Profile</button>
+        <button id="edit-profile-button" @click="openEditProfile">Edit Profile</button>
         <!--Email and Password-->
         <div class="profile-details">
             <label>Email:</label>
@@ -29,9 +29,9 @@
         </div>
 
         <!-- Avatar Modal -->
-        <AvatarModal
-            v-if="showAvatarModal"
-            @close-modal="showAvatarModal = false"
+        <EditProfile
+            v-if="showEditProfile"
+            @close-modal="showEditProfile = false"
             @avatar-updated="handleAvatarUpdate"
         />
     </div>
@@ -42,11 +42,11 @@
 import { ref, watch, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/AuthStores';
-import AvatarModal from '@/components/AvatarModal.vue';
+import EditProfile from '@/components/EditProfile.vue';
 
 const authStore = useAuthStore();
 const router = useRouter(); 
-const displayName = computed(() => authStore.user?.displayName || "Guest");
+const displayName = ref(authStore.user?.displayName || "Guest");
 const email = computed(() => authStore.user?.email || "");
 
 const DEFAULT_AVATAR = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSpwxCN33LtdMLbWdhafc4HxabqpaU0qVbDxQ&s";
@@ -61,18 +61,27 @@ watch(() => authStore.user, (newUser) => {
     }
 }, { immediate: true });
 
-const showAvatarModal = ref(false);
-const openAvatarModal = () => {
-    showAvatarModal.value = true;
+const showEditProfile = ref(false);
+const openEditProfile = () => {
+    showEditProfile.value = true;
 };
 
-const handleAvatarUpdate = (updatedTurtle) => {
-    authStore.user.selectedTurtle = updatedTurtle;
-    if (updatedTurtle?.turtleFilename) {
-        turtleSrc.value = `/turtles/${updatedTurtle.turtleFilename}`;
-    }
-    showAvatarModal.value = false;
+const handleAvatarUpdate = (payload) => {
+  const { turtle, name } = payload;
+
+  if (turtle?.turtleFilename) {
+    turtleSrc.value = `/turtles/${turtle.turtleFilename}`;
+    authStore.user.selectedTurtle = turtle;
+  }
+
+  if (name) {
+    displayName.value = name;
+    authStore.user.displayName = name;
+  }
+
+  showEditProfile.value = false;
 };
+
 
 const signOutUser = async () => {
     await authStore.logUserOut(); 
