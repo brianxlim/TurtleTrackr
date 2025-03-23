@@ -2,7 +2,8 @@
     <div class="category-container">
       <div class="category">
         <span class="category-name">{{ category.name }}</span>
-        <span class="category-amount">${{ category.amount.toFixed(2) }}/${{ category.setAmount }}</span>
+        <span v-if="category.amount.toFixed(2) >= category.setAmount" id="over-category-amount">${{ category.amount.toFixed(2) }}/${{ category.setAmount }}</span>
+        <span v-if="category.amount.toFixed(2) < category.setAmount" id="within-category-amount">${{ category.amount.toFixed(2) }}/${{ category.setAmount }}</span>
       </div>
       <div class="progress-bar">
         <div class="fill" :style="{ width: `${progressWidth}%`, backgroundColor: category.color }"></div>
@@ -42,6 +43,14 @@ export default {
   justify-content: space-between;
   font-weight: bold;
   margin-bottom: 5px;
+}
+
+#over-category-amount {
+    color: red;
+}
+
+#within-category-amount {
+    color:black;
 }
 
 .progress-bar {

@@ -53,13 +53,13 @@ export default {
         return {
             showGoalSetter: false,
             isLoading: true,
-            totalSet: 2490,
-            totalSpent: 1374.8,
+            totalSet: 0,
+            totalSpent: 0,
             categories: [
-                { name: "Food", amount: 438.8, setAmount:750, color: "#6F9BD1" },
-                { name: "Travel", amount: 130.5, setAmount:100, color: "#B394C6" },
-                { name: "Shopping", amount: 739.1, setAmount:1500, color: "#E08E99" },
-                { name: "Others", amount: 66.4, setAmount:140, color: "#96BE8C" },
+                { name: "Food", amount: 0, setAmount:0, color: "#6F9BD1" },
+                { name: "Travel", amount: 0, setAmount:0, color: "#B394C6" },
+                { name: "Shopping", amount: 0, setAmount:0, color: "#E08E99" },
+                { name: "Others", amount: 0, setAmount:0, color: "#96BE8C" },
             ],
         };
     },
