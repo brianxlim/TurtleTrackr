@@ -9,12 +9,16 @@
         <h3>Please choose a new avatar</h3>
         <AvatarSelection @selected-turtle="onAvatarSelected" />
   
-        <button :disabled="!selectedAvatar && !newName" @click="saveChanges">
-          <span v-if="loading" class="spinner">
-            <i class="pi pi-spin pi-spinner" style="font-size: 1rem"></i>
-          </span>
-          <span v-else>Save Changes</span>
-        </button>
+        <div class="button-group">
+            <button :disabled="!selectedAvatar && !newName" @click="saveChanges">
+                <span v-if="loading" class="spinner">
+                <i class="pi pi-spin pi-spinner" style="font-size: 1rem"></i>
+                </span>
+                <span v-else>Save Changes</span>
+            </button>
+
+            <button class="cancel-button" @click="$emit('close-modal')">Cancel</button>
+        </div>
       </div>
     </div>
   </template>
@@ -116,6 +120,7 @@
   button:hover {
     background-color: var(--color-main-dark);
     transition: ease-in-out 0.3s;
+    color: white;
   }
   
   .modal-overlay {
@@ -141,5 +146,22 @@
     overflow-y: auto;
     place-items: center;
   }
+
+  .button-group {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+}
+
+.cancel-button {
+  background-color: var(--color-accent-light);
+  color: black;
+}
+
+.cancel-button:hover {
+  background-color: rgb(161, 57, 57);
+  color: white;
+}
+
   </style>
   

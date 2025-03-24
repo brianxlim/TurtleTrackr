@@ -34,6 +34,13 @@
             @close-modal="showEditProfile = false"
             @avatar-updated="handleAvatarUpdate"
         />
+        
+        <!-- Change Password Modal -->
+        <ChangePasswordModal
+            v-if="showChangePassword"
+            @close="showChangePassword = false"
+        />
+
     </div>
 </template>
 
@@ -43,11 +50,17 @@ import { ref, watch, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/AuthStores';
 import EditProfile from '@/components/EditProfile.vue';
+import ChangePasswordModal from '@/components/ChangePasswordModal.vue';
+
 
 const authStore = useAuthStore();
 const router = useRouter(); 
 const displayName = ref(authStore.user?.displayName || "Guest");
 const email = computed(() => authStore.user?.email || "");
+const showChangePassword = ref(false);
+const goToChangePassword = () => {
+  showChangePassword.value = true;
+};
 
 const DEFAULT_AVATAR = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSpwxCN33LtdMLbWdhafc4HxabqpaU0qVbDxQ&s";
 const turtleSrc = ref(DEFAULT_AVATAR);
@@ -102,10 +115,6 @@ const deleteAccount = async () => {
         }
     }
 }
-
-const goToChangePassword = () => {
-    router.push('/change-password');
-};
 </script>
 
 <style scoped>
