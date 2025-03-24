@@ -82,7 +82,6 @@ export default {
             }
 
             const userGoalsRef = collection(db, "Users", user.uid, "Goals");
-
             const q = query(userGoalsRef, where("month", "==", currentMonth));
             const querySnapshot = await getDocs(q);
 
@@ -133,20 +132,61 @@ export default {
                 const q = query(userGoalsRef, where("month", "==", currentMonth));
                 const querySnapshot = await getDocs(q);
 
+                // Start with defaults
+                let goalsData = {
+                    totalSet: 0,
+                    categories: [
+                        { name: "Food", setAmount: 0 },
+                        { name: "Travel", setAmount: 0 },
+                        { name: "Shopping", setAmount: 0 },
+                        { name: "Others", setAmount: 0 },
+                    ]
+                };
+
                 if (!querySnapshot.empty) {
                     const data = querySnapshot.docs[0].data();
-                    this.totalSet = data.totalSet;
-                    this.totalSpent = data.totalSpent;
-                    this.categories = data.categories.map(c => ({
-                        name: c.name,
-                        amount: c.spent,
-                        setAmount: c.setAmount,
-                        color: this.getColorForCategory(c.name) // retain consistent colors
-                    }));
+                    goalsData.totalSet = data.totalSet;
+                    goalsData.categories = data.categories;
                     console.log("✅ Goals loaded from Firestore.");
                 } else {
-                    console.log("📭 No goals found for this month. Using default.");
+                    console.log("📭 No goals found for this month. Using default set amounts.");
                 }
+
+                // Load real-time spendings from "Expenses"
+                const expenseRef = collection(db, "Users", user.uid, "Expenses");
+                const expensesSnapshot = await getDocs(expenseRef);
+
+                let categoryMap = {
+                    Food: 0,
+                    Travel: 0,
+                    Shopping: 0,
+                    Others: 0,
+                };
+                let totalSpent = 0;
+
+                expensesSnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const amount = parseFloat(data.Amount) || 0;
+                    totalSpent += amount;
+
+                    const category = categoryMap.hasOwnProperty(data.Category)
+                        ? data.Category
+                        : "Others";
+
+                    categoryMap[category] += amount;
+                });
+
+                // Combine setAmount with real-time spent
+                this.categories = goalsData.categories.map((c) => ({
+                    name: c.name,
+                    amount: categoryMap[c.name] || 0,       // real-time spending
+                    setAmount: c.setAmount,                 // set target from Firestore
+                    color: this.getColorForCategory(c.name) // retain color
+                }));
+
+                this.totalSet = goalsData.totalSet;
+                this.totalSpent = totalSpent;
+
             } catch (error) {
                 console.error("❌ Error loading goals:", error);
             }
