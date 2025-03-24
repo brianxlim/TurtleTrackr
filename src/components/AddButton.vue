@@ -128,7 +128,8 @@ export default {
           createdAt: new Date(),
         });
 
-        alert("Your expense has been successfully added!");
+        console.log("✅ Document successfully written!");
+        this.$emit("refresh-data");
         this.closeModal();
       } catch (error) {
         console.error("❌ Error adding document: ", error);
