@@ -39,7 +39,7 @@
             </div>
             <div class="form-group">
               <label for="highlights">Send Highlights to:</label>
-              <input type="text" id="highlights" v-model="formData.highlights" placeholder="None">
+              <input type="text" id="highlights" v-model="formData.highlights" placeholder="Optional">
             </div>
           </div>
 
@@ -57,8 +57,8 @@
 <script>
 import firebaseApp from '../firebase.js';
 import { getFirestore, collection, addDoc } from "firebase/firestore";
-import { db } from "@/firebase.js"
-import { auth } from "@/firebase.js"
+import { db } from "@/firebase.js";
+import { auth } from "@/firebase.js";
 
 export default {
   data() {
@@ -96,6 +96,14 @@ export default {
         alert("Please fill in all required fields: Title, Amount, Date, and Category.");
         return false;
       }
+
+      // Validate amount is a valid number and greater than 0
+      const amount = parseFloat(this.formData.amount);
+      if (isNaN(amount) || amount <= 0) {
+        alert("Please enter a valid amount greater than 0.");
+        return false;
+      }
+      
       return true;
     },
     async savetofs() {
@@ -103,23 +111,21 @@ export default {
       if (!this.validateForm()) {
         return; // Stop if the form is invalid
       }
-      console.log("IN AC - Saving Data...");
+
       const user = auth.currentUser;
-      if(!user) {
+      if (!user) {
         alert("No user logged in. Please login to save your data.");
         return;
       }
 
-      alert("Saving your data for Title: " + this.formData.title);
-
       try {
         await addDoc(collection(db, "Users", user.uid, "Expenses"), {
           Title: this.formData.title,
-          Amount: this.formData.amount,
+          Amount: parseFloat(this.formData.amount), // Ensure it's saved as a number
           Date: this.formData.date,
           Category: this.formData.category,
-          Highlights: this.formData.highlights,
-          createdAt: new Date()
+          Highlights: this.formData.highlights || "None", // Optional Highlights
+          createdAt: new Date(),
         });
 
         console.log("✅ Document successfully written!");
@@ -127,6 +133,7 @@ export default {
         this.closeModal();
       } catch (error) {
         console.error("❌ Error adding document: ", error);
+        alert("Error saving your data. Please try again.");
       }
     },
   },

@@ -34,7 +34,7 @@
         <AvatarSelection @selected-turtle="handleSelectedTurtle" />
       </section>
 
-      <!-- Sign up button -->
+      <!-- Submit button -->
       <button type="submit" :disabled="loading">
         <span v-if="loading" class="spinner">
           <i class="pi pi-spin pi-spinner" style="font-size: 1rem"></i>
@@ -42,6 +42,10 @@
         <span v-else>{{ showSignUp ? 'Sign Up' : 'Log In' }}</span>
       </button>
     </form>
+    
+    <!-- Enable Google log in/registration -->
+    <AltAuthMethod />
+
     <p>
       <span v-if="!showSignUp">Don't have an account? </span>
       <span v-else>Already have an account? </span>
@@ -57,6 +61,7 @@ import { ref, watchEffect } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '@/stores/AuthStores';
 import AvatarSelection from '@/components/AvatarSelection.vue';
+import AltAuthMethod from '@/components/AltAuthMethod.vue';
 
 const email = ref("");
 const password = ref("");
@@ -175,6 +180,7 @@ form {
   gap: 2rem;
   align-items: flex-start;
   width: 100%;
+  margin: 0 0 2rem 0;
 }
 
 .field {
@@ -208,7 +214,6 @@ button {
   cursor: pointer;
   font-size: 1rem;
   font-family: 'Poppins';
-  margin: 0 0 1rem 0;
   align-self: center;
 }
 
