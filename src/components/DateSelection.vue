@@ -58,7 +58,10 @@ export default {
             this.emitChange();
         },
         emitChange() {
-            this.$emit('month-changed', this.formattedDate);
+            this.$emit('month-changed', {
+                year: this.currentYear,
+                month: this.currentMonth,
+            });
         }
     }
 }
