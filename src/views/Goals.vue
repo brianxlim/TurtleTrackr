@@ -28,7 +28,8 @@
             v-if="showGoalSetter"
             :categories="categories"
             :totalSet="totalSet"
-            @close="showGoalSetter = false"
+            :force="forceSetGoal"
+            @close="handleGoalSetterClose"
             @updateGoals="setGoals"
             />
         </div>
@@ -57,6 +58,7 @@ export default {
         const now = new Date();
         return {
             showGoalSetter: false,
+            forceSetGoal: false,
             isLoading: true,
             totalSet: 0,
             totalSpent: 0,
@@ -126,6 +128,8 @@ export default {
             } catch (error) {
                 console.error("❌ Error saving goals to Firestore:", error);
             }
+
+            this.forceSetGoal = false;
         },
         async loadGoalsFromFirestore() {
             const user = auth.currentUser;
@@ -159,6 +163,11 @@ export default {
                     console.log("✅ Goals loaded from Firestore.");
                 } else {
                     console.log("📭 No goals found for this month. Using default set amounts.");
+                    // Force users to set up Goals
+                    if (this.isCurrentMonth) {
+                        this.showGoalSetter = true;
+                        this.forceSetGoal = true;
+                    }
                 }
 
                 // Load real-time spendings from "Expenses"
@@ -261,6 +270,12 @@ export default {
             }
             this.isLoading = false;
         },
+        handleGoalSetterClose() {
+            if(this.forceSetGoal) {
+                return;
+            }
+            this.showGoalSetter = false;
+        }
     },
 };
 </script>
