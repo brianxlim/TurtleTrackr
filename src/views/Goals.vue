@@ -1,6 +1,6 @@
 <template>
     <div class = "bar">
-        <DateSelection />
+        <DateSelection @month-changed="handleMonthChange" />
     </div>
     <div class="dashboard">
         <div v-if="isLoading" class="loading-container">
@@ -16,7 +16,11 @@
                         <IndividualGoals :category="category" :totalSet="totalSet"/>
                     </div>
                     <div class="button">
-                        <button class="change-goals" @click="showGoalSetter = true">Change Goals</button>
+                        <button class="change-goals" 
+                        @click="showGoalSetter = true"
+                        :disabled="!isCurrentMonth"
+                    >
+                    Change Goals</button>
                     </div>
                 </div>
             </div>
@@ -33,7 +37,7 @@
 
 <script>
 import { db, auth } from "@/firebase";
-import { doc, collection, addDoc, getDocs, query, where, Timestamp, setDoc } from "firebase/firestore";
+import { doc, collection, addDoc, getDoc, getDocs, query, where, Timestamp, setDoc } from "firebase/firestore";
 
 import GoalPieChart from "@/components/GoalPieChart.vue";
 import NavBar from "@/components/NavBar/NavBar.vue";
@@ -50,11 +54,14 @@ export default {
         IndividualGoals,
     },
     data() {
+        const now = new Date();
         return {
             showGoalSetter: false,
             isLoading: true,
             totalSet: 0,
             totalSpent: 0,
+            selectedYear: now.getFullYear(),
+            selectedMonth: now.getMonth() + 1,
             categories: [
                 { name: "Food", amount: 0, setAmount:0, color: "#6F9BD1" },
                 { name: "Travel", amount: 0, setAmount:0, color: "#B394C6" },
@@ -65,6 +72,12 @@ export default {
     },
     mounted() {
         this.loadGoalsFromFirestore();
+    },
+    computed: {
+        isCurrentMonth() {
+            const now = new Date();
+            return this.selectedYear === now.getFullYear() && this.selectedMonth === (now.getMonth() + 1);
+        }
     },
     methods: {
         async setGoals({ categories, goalAmount }) {
@@ -81,9 +94,8 @@ export default {
                 return;
             }
 
-            const userGoalsRef = collection(db, "Users", user.uid, "Goals");
-            const q = query(userGoalsRef, where("month", "==", currentMonth));
-            const querySnapshot = await getDocs(q);
+            const userGoalsRef = doc(db, "Users", user.uid, "Goals", currentMonth);
+            const querySnapshot = await getDoc(userGoalsRef);
 
             const goalData = {
                 month: currentMonth,
@@ -98,17 +110,15 @@ export default {
             };
 
             try {
-            if (!querySnapshot.empty) {
+            if (querySnapshot.exists()) {
                 // Document exists — update it
-                const docRef = doc(db, "Users", user.uid, "Goals", querySnapshot.docs[0].id);
+                const docRef = doc(db, "Users", user.uid, "Goals", currentMonth);
                 await setDoc(docRef, goalData);
                 console.log("✅ Existing goals updated in Firestore.");
             } else {
                 // Document does not exist — create new
-                await addDoc(userGoalsRef, {
-                    ...goalData,
-                    createdAt: new Date()
-                });
+                const docRef = doc(db, "Users", user.uid, "Goals", currentMonth);
+                await setDoc(docRef, goalData);
                 console.log("✅ New goals snapshot added to Firestore.");
             }
 
@@ -126,11 +136,10 @@ export default {
 
             const now = new Date();
             const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            const userGoalsRef = doc(db, "Users", user.uid, "Goals", currentMonth);
 
             try {
-                const userGoalsRef = collection(db, "Users", user.uid, "Goals");
-                const q = query(userGoalsRef, where("month", "==", currentMonth));
-                const querySnapshot = await getDocs(q);
+                const querySnapshot = await getDoc(userGoalsRef);
 
                 // Start with defaults
                 let goalsData = {
@@ -143,8 +152,8 @@ export default {
                     ]
                 };
 
-                if (!querySnapshot.empty) {
-                    const data = querySnapshot.docs[0].data();
+                if (querySnapshot.exists()) {
+                    const data = querySnapshot.data();
                     goalsData.totalSet = data.totalSet;
                     goalsData.categories = data.categories;
                     console.log("✅ Goals loaded from Firestore.");
@@ -201,6 +210,56 @@ export default {
                 Others: "#96BE8C",
             };
             return defaultColors[categoryName] || "#ccc";
+        },
+        async handleMonthChange({ year, month }) {
+            this.isLoading = true;
+
+            this.selectedMonth = month;
+            this.selectedYear = year;
+
+            const selectedMonth = `${year}-${String(month).padStart(2, '0')}`;
+            const user = auth.currentUser;
+            if (!user) return;
+
+            try {
+                const userGoalsRef = doc(db, "Users", user.uid, "Goals", selectedMonth);
+                const snapshot = await getDoc(userGoalsRef);
+
+                if (snapshot.exists()) {
+                const data = snapshot.data();
+                this.totalSet = data.totalSet;
+                this.totalSpent = data.totalSpent;
+                this.categories = data.categories.map(c => ({
+                    name: c.name,
+                    amount: c.spent,
+                    setAmount: c.setAmount,
+                    color: this.getColorForCategory(c.name)
+                }));
+                console.log("✅ Goals loaded for selected month:", selectedMonth);
+                } else {
+                console.log("📭 No goals found for selected month. Backfilling...");
+                // Fallback to default goal structure
+                const defaultCategories = this.categories.map((c) => ({
+                    name: c.name,
+                    setAmount: 0,
+                    spent: 0
+                }));
+
+                // Reflect this new default in UI
+                this.totalSpent = 0;
+                this.totalSet = 0;
+                this.categories = defaultCategories.map((c) => ({
+                    ...c,
+                    amount: 0,
+                    color: this.getColorForCategory(c.name)
+                }));
+
+                console.log("📦 Backfilled snapshot created for", selectedMonth);
+                }
+            } catch (error) {
+                console.error("❌ Failed to handle month change:", error);
+            }
+            this.isLoading = false;
         },
     },
 };
