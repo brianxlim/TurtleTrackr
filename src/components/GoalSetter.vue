@@ -25,8 +25,8 @@
         </div>
   
         <div class="buttons">
-          <button class="cancel" @click="$emit('close')">Cancel</button>
-          <button class="confirm" :disabled="totalPercentage !== 100 || editableTotalSet <= 0" @click="confirmGoals">Confirm</button>
+          <button class="cancel" :disabled="force" @click="$emit('close')">Cancel</button>
+          <button class="confirm" :disabled="totalPercentage !== 100 || editableTotalSet <= 0 || hasNegativePercentage" @click="confirmGoals">Confirm</button>
         </div>
       </div>
     </div>
@@ -34,7 +34,7 @@
   
 <script>
 export default {
-    props: ["categories", "totalSet"],
+    props: ["categories", "totalSet", "force"],
     data() {
       return {
         editableTotalSet: this.totalSet,
@@ -47,6 +47,9 @@ export default {
     computed: {
       totalPercentage() {
         return this.editableCategories.reduce((sum, c) => sum + parseFloat(c.percentage), 0);
+      },
+      hasNegativePercentage() {
+        return this.editableCategories.some(c => parseFloat(c.percentage) < 0);
       },
     },
     methods: {
