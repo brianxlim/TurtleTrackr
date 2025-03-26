@@ -50,7 +50,7 @@
           </div>
           <div class="form-group">
             <label for="date">Date*</label>
-            <input type="date" id="date" v-model="formData.date" required>
+            <input type="date" id="date" v-model="formData.date" :max="maxDate" required>
           </div>
         </div>
 
@@ -92,6 +92,7 @@ import { onAuthStateChanged } from "firebase/auth";
 export default {
   components: { ExpenseCard },
   data() {
+    const today = new Date().toISOString().split("T")[0]; // Get today's date in YYYY-MM-DD format
     return {
       expenses: [],
       user: null,
@@ -105,6 +106,7 @@ export default {
         category: "",
         highlights: "",
       },
+      maxDate: today,
     };
   },
   computed: {
@@ -175,6 +177,11 @@ export default {
       const amount = parseFloat(this.formData.amount);
       if (isNaN(amount) || amount <= 0) {
         alert("Please enter a valid amount greater than 0.");
+        return false;
+      }
+
+      if (this.formData.date > this.maxDate) {
+        alert("You cannot log an expense for a future date.");
         return false;
       }
 

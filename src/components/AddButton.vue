@@ -21,7 +21,7 @@
             </div>
             <div class="form-group">
               <label for="date">Date*</label>
-              <input type="date" id="date" v-model="formData.date" required>
+              <input type="date" id="date" v-model="formData.date" :max="maxDate" required>
             </div>
           </div>
 
@@ -62,15 +62,17 @@ import { auth } from "@/firebase.js";
 
 export default {
   data() {
+    const today = new Date().toISOString().split("T")[0]; // Get today's date in YYYY-MM-DD format
     return {
       isModalOpen: false,
       formData: {
         title: "",
         amount: "",
-        date: "",
+        date: today, // Default to today's date
         category: "",
         highlights: "",
-      }
+      },
+      maxDate: today, // Restrict future dates
     };
   },
   methods: {
@@ -85,32 +87,33 @@ export default {
       this.formData = {
         title: "",
         amount: "",
-        date: "",
+        date: this.maxDate, // Reset to today's date
         category: "",
         highlights: "",
       };
     },
     validateForm() {
-      // Check if all required fields are filled out
       if (!this.formData.title || !this.formData.amount || !this.formData.date || !this.formData.category) {
         alert("Please fill in all required fields: Title, Amount, Date, and Category.");
         return false;
       }
 
-      // Validate amount is a valid number and greater than 0
       const amount = parseFloat(this.formData.amount);
       if (isNaN(amount) || amount <= 0) {
         alert("Please enter a valid amount greater than 0.");
+        return false;
+      }
+
+      // Ensure selected date is today or earlier
+      if (this.formData.date > this.maxDate) {
+        alert("You cannot log an expense for a future date.");
         return false;
       }
       
       return true;
     },
     async savetofs() {
-      // Validate the form before saving data
-      if (!this.validateForm()) {
-        return; // Stop if the form is invalid
-      }
+      if (!this.validateForm()) return;
 
       const user = auth.currentUser;
       if (!user) {
@@ -121,10 +124,10 @@ export default {
       try {
         await addDoc(collection(db, "Users", user.uid, "Expenses"), {
           Title: this.formData.title,
-          Amount: parseFloat(this.formData.amount), // Ensure it's saved as a number
+          Amount: parseFloat(this.formData.amount),
           Date: this.formData.date,
           Category: this.formData.category,
-          Highlights: this.formData.highlights || "None", // Optional Highlights
+          Highlights: this.formData.highlights || "None",
           createdAt: new Date(),
         });
 
@@ -139,7 +142,6 @@ export default {
   },
 };
 </script>
-
 
   
 <style scoped>

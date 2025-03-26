@@ -14,7 +14,12 @@
       <div class="field">
         <label v-if="showSignUp" for="password">*Password</label>
         <label v-else for="password">Password</label>
+
+        <!-- Password requirement template -->
         <input type="password" v-model="password" placeholder="Enter password" required />
+        <div v-if="showSignUp">
+         <PasswordValidator :password="password" />
+        </div>
       </div>
       
       <div v-if="showSignUp" class="field">
@@ -61,7 +66,8 @@ import { ref, watchEffect } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '@/stores/AuthStores';
 import AvatarSelection from '@/components/AvatarSelection.vue';
-import AltAuthMethod from '@/components/AltAuthMethod.vue';
+import AltAuthMethod from '@/components/Auth/AltAuthMethod.vue';
+import PasswordValidator from '@/components/Auth/PasswordValidator.vue';
 
 const email = ref("");
 const password = ref("");
