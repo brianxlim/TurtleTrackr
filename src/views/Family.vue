@@ -84,6 +84,8 @@
 
 <script>
 import { db, auth } from "@/firebase";
+import confetti from 'canvas-confetti';
+
 import {
   collection,
   doc,
@@ -186,7 +188,11 @@ export default {
           joinedAt: new Date()
         });
 
-        alert(`Group created successfully! Invite Code: ${groupCode}`);
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
       } catch (err) {
         console.error("Error creating group:", err);
         alert("Error creating group. Please try again.");
@@ -247,7 +253,11 @@ export default {
           joinedAt: new Date()
         });
 
-        alert("You have successfully joined the group!");
+        confetti({
+          particleCount: 120,
+          spread: 100,
+          origin: { y: 0.7 },
+        });
       } catch (err) {
         console.error("Error joining group:", err);
         alert("Error joining group. Please try again.");
