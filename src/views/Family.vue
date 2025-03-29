@@ -422,8 +422,8 @@ export default {
 .family-container {
   max-width: 1100px;
   margin: 0 auto;
-  background: #fefae0;
-  padding: 40px 20px;
+  background: #ffffff;
+  padding: 10px 10px;
   border-radius: 16px;
   text-align: center;
 }
