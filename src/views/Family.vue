@@ -45,6 +45,10 @@
     <div v-if="showCreateGroupModal" class="modal">
       <div class="modal-content">
         <span class="close" @click="showCreateGroupModal = false">&times;</span>
+        <div class="mascot-wrap">
+          <img src="/images/turtle_wave.gif" class="turtle-mascot" />
+          <div class="speech-bubble">Hi pookie! Ready to create a fam?</div>
+        </div>
         <h2>Create Group</h2>
         <input v-model="newGroupName" placeholder="Enter group name" class="input-field" />
 
@@ -295,11 +299,131 @@ export default {
 </script>
 
 <style scoped>
+.turtle-mascot {
+  width: 100px;
+  max-height: 120px;
+  object-fit: contain;
+  margin-bottom: 0px;
+  animation: floatWave 2s ease-in-out infinite;
+}
+
+.mascot-wrap {
+  flex-direction: column;
+  align-items: center;
+}
+
+.speech-bubble {
+  background: #fff;
+  border-radius: 12px;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: #333;
+  position: center;
+  top: 5px;
+  left: 100px;
+  white-space: nowrap;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.modal-content {
+  background-color: #fffaf0;
+  border-radius: 20px;
+  padding: 30px 25px;
+  width: 90%;
+  max-width: 400px;
+  text-align: center;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+  position: relative;
+  animation: slideIn 0.4s ease-out;
+}
+
+.modal-content h2 {
+  margin-bottom: 20px;
+  font-size: 24px;
+  color: #333;
+}
+
+.input-field {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 16px;
+  border-radius: 8px;
+  border: 1.5px solid #ccc;
+  margin-bottom: 15px;
+  box-sizing: border-box;
+}
+
+.close {
+  position: absolute;
+  top: 12px;
+  right: 18px;
+  font-size: 28px;
+  cursor: pointer;
+  color: #aaa;
+}
+
+.close:hover {
+  color: #333;
+}
+
+.submit-btn {
+  background-color: #627ea4;
+  color: white;
+  font-weight: bold;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  margin-top: 10px;
+}
+
+.submit-btn:disabled {
+  background-color: #999;
+  cursor: not-allowed;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(-30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+
 .family-container {
   max-width: 1100px;
   margin: 0 auto;
-  background: #fefae0;
-  padding: 40px 20px;
+  background: #ffffff;
+  padding: 10px 10px;
   border-radius: 16px;
   text-align: center;
 }
