@@ -1,12 +1,12 @@
 <template>
   <div v-if="group" class="family-details">
-    <button class="back-btn" @click="$router.push('/family')">← Back</button>
-    
+    <button class="back-btn" @click="$router.back()">← Back</button>
+
     <h1>{{ group.name }}</h1>
 
     <div class="group-info">
-      <p><strong>Invite Code:</strong> {{ group.groupCode }}</p>
-      <p><strong>Total Spent:</strong> ${{ group.totalSpent.toFixed(2) }}</p>
+      <p><strong>Invite Code:</strong> {{ group.inviteCode }}</p>
+      <p><strong>Total Spent:</strong> ${{ group.totalSpent?.toFixed(2) || '0.00' }}</p>
     </div>
 
     <h2>Members:</h2>
@@ -15,17 +15,16 @@
     </ul>
   </div>
 
-  <!-- Loading State -->
   <div v-else class="loading">
     <p>Loading group details...</p>
   </div>
 </template>
 
 <script>
+import { ref, onMounted } from "vue";
+import { useRoute } from "vue-router";
 import { db } from "@/firebase";
 import { doc, getDoc } from "firebase/firestore";
-import { useRoute } from "vue-router";
-import { ref, onMounted } from "vue";
 
 export default {
   setup() {
@@ -34,23 +33,24 @@ export default {
 
     const fetchGroupDetails = async () => {
       try {
-        console.log("Fetching group with ID:", route.params.id); // Debugging
         const groupRef = doc(db, "groups", route.params.id);
         const docSnap = await getDoc(groupRef);
 
         if (docSnap.exists()) {
           group.value = docSnap.data();
         } else {
-          console.error("Group not found!");
+          console.error("Group not found");
         }
-      } catch (error) {
-        console.error("Error fetching group details:", error);
+      } catch (err) {
+        console.error("Error fetching group:", err);
       }
     };
 
     onMounted(fetchGroupDetails);
 
-    return { group };
+    return {
+      group
+    };
   }
 };
 </script>
