@@ -1,61 +1,88 @@
 <template>
-    <div class="family-container">
-      <!-- Header with Buttons -->
-      <div class="header">
-        <h1>My Families</h1>
-        <div class="buttons">
-          <button @click="showCreateGroupModal = true" class="btn create-btn">Create Group</button>
-          <button @click="showJoinGroupModal = true" class="btn join-btn">Join Group</button>
+  <div class="family-container">
+    <!-- Header with Buttons -->
+    <div class="header">
+      <h1>My Families</h1>
+      <div class="buttons">
+        <button @click="showCreateGroupModal = true" class="btn create-btn">Create Group</button>
+        <button @click="showJoinGroupModal = true" class="btn join-btn">Join Group</button>
+      </div>
+    </div>
+
+    <!-- Groups Display -->
+    <div v-if="groups.length > 0" class="group-list">
+      <div
+        v-for="group in groups"
+        :key="group.id"
+        class="group-card"
+        @click="goToGroupDetails(group.id)"
+        :style="{ borderColor: (group.color || '#ccc') + '88' }"
+      >
+        <div
+          class="group-header"
+          :style="{
+            backgroundColor: group.color || '#e0e0e0',
+            color: getTextColor(group.color || '#e0e0e0')
+          }"
+        >
+          <h2>{{ group.name }}</h2>
         </div>
-      </div>
-  
-      <!-- Groups Display -->
-      <div v-if="groups.length > 0" class="group-list">
-        <div v-for="group in groups" :key="group.id" class="group-card" @click="goToGroupDetails(group.id)">
-          <div class="group-header" :style="{ backgroundColor: group.color }">
-            <h2>{{ group.name }}</h2>
-          </div>
-          <div class="group-body">
-            <img :src="group.image || '/images/default.png'" alt="Group Image" class="group-image" />
-            <p class="group-members">{{ group.members.length }} Members</p>
-            <p class="group-total">Total: ${{ group.totalSpent.toFixed(2) }}</p>
-            <p class="group-code">Invite Code: <span>{{ group.groupCode }}</span></p>
-          </div>
-        </div>
-      </div>
-  
-      <!-- Show Empty State If No Groups Exist -->
-      <div v-else class="empty-state">
-        <p>You are not part of any groups yet.</p>
-      </div>
-  
-      <!-- Create Group Modal -->
-      <div v-if="showCreateGroupModal" class="modal">
-        <div class="modal-content">
-          <span class="close" @click="showCreateGroupModal = false">&times;</span>
-          <h2>Create Group</h2>
-          <input v-model="newGroupName" placeholder="Enter group name" class="input-field" />
-          <button @click="createGroup" class="btn submit-btn" :disabled="loading">
-            {{ loading ? "Creating..." : "Create" }}
-          </button>
-        </div>
-      </div>
-  
-      <!-- Join Group Modal -->
-      <div v-if="showJoinGroupModal" class="modal">
-        <div class="modal-content">
-          <span class="close" @click="showJoinGroupModal = false">&times;</span>
-          <h2>Join Group</h2>
-          <input v-model="joinGroupCode" placeholder="Enter group invite code" class="input-field" />
-          <button @click="joinGroup" class="btn submit-btn" :disabled="loading">
-            {{ loading ? "Joining..." : "Join" }}
-          </button>
+        <div class="group-body">
+          <img :src="group.image || '/images/default.png'" alt="Group Image" class="group-image" />
+          <p class="group-members">{{ group.members.length }} Members</p>
+          <p class="group-total">Total: ${{ group.totalSpent.toFixed(2) }}</p>
+          <p class="group-code">Invite Code: <span>{{ group.inviteCode }}</span></p>
         </div>
       </div>
     </div>
-  </template>
-  
-  <script>
+
+    <!-- Show Empty State If No Groups Exist -->
+    <div v-else class="empty-state">
+      <p>You are not part of any groups yet.</p>
+    </div>
+
+    <!-- Create Group Modal -->
+    <div v-if="showCreateGroupModal" class="modal">
+      <div class="modal-content">
+        <span class="close" @click="showCreateGroupModal = false">&times;</span>
+        <h2>Create Group</h2>
+        <input v-model="newGroupName" placeholder="Enter group name" class="input-field" />
+
+        <label style="margin-top: 15px;">Choose Group Color:</label>
+        <div class="color-swatch-container">
+          <div
+            v-for="color in presetColors"
+            :key="color"
+            class="color-swatch"
+            :style="{
+              backgroundColor: color,
+              border: selectedColor === color ? '3px solid #444' : '2px solid transparent'
+            }"
+            @click="selectedColor = color"
+          ></div>
+        </div>
+
+        <button @click="createGroup" class="btn submit-btn" :disabled="loading">
+          {{ loading ? "Creating..." : "Create" }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Join Group Modal -->
+    <div v-if="showJoinGroupModal" class="modal">
+      <div class="modal-content">
+        <span class="close" @click="showJoinGroupModal = false">&times;</span>
+        <h2>Join Group</h2>
+        <input v-model="joinGroupCode" placeholder="Enter group invite code" class="input-field" />
+        <button @click="joinGroup" class="btn submit-btn" :disabled="loading">
+          {{ loading ? "Joining..." : "Join" }}
+        </button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
 import { db, auth } from "@/firebase";
 import {
   collection,
@@ -76,11 +103,9 @@ import { useRouter } from 'vue-router';
 export default {
   setup() {
     const router = useRouter();
-
     const goToGroupDetails = (groupId) => {
       router.push({ name: "FamilyDetails", params: { id: groupId } });
     };
-
     return { goToGroupDetails };
   },
 
@@ -90,6 +115,12 @@ export default {
       showJoinGroupModal: false,
       newGroupName: "",
       joinGroupCode: "",
+      selectedColor: "#C0C0C0",
+      presetColors: [
+        "#F7B267", "#F4845F", "#8AC6D1", "#A1C298",
+        "#D5AAFF", "#FFA5AB", "#FFCB77", "#B5EAEA",
+        "#B084CC", "#C0C0C0"
+      ],
       groups: [],
       loading: false,
       unsubscribe: null
@@ -107,6 +138,16 @@ export default {
   methods: {
     generateGroupCode() {
       return Math.random().toString(36).substring(2, 10).toUpperCase();
+    },
+
+    getTextColor(bgColor) {
+      if (!bgColor) return "#000";
+      const hex = bgColor.replace("#", "");
+      const r = parseInt(hex.substring(0, 2), 16);
+      const g = parseInt(hex.substring(2, 4), 16);
+      const b = parseInt(hex.substring(4, 6), 16);
+      const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+      return brightness > 160 ? "#000" : "#fff";
     },
 
     async createGroup() {
@@ -130,17 +171,15 @@ export default {
         members: [user.uid],
         totalSpent: 0,
         inviteCode: groupCode,
-        color: "#C0C0C0",
+        color: this.selectedColor || "#C0C0C0",
         createdBy: user.uid,
         createdAt: new Date()
       };
 
       try {
-        // 1. Add to global `groups/` collection
         const groupDocRef = await addDoc(collection(db, "groups"), newGroup);
         const groupId = groupDocRef.id;
 
-        // 2. Add to this user's `Users/{uid}/groups/{groupId}` subcollection
         await setDoc(doc(db, "Users", user.uid, "groups", groupId), {
           name: newGroup.name,
           inviteCode: newGroup.inviteCode,
@@ -154,6 +193,7 @@ export default {
       }
 
       this.newGroupName = "";
+      this.selectedColor = "#C0C0C0";
       this.showCreateGroupModal = false;
       this.loading = false;
     },
@@ -189,7 +229,6 @@ export default {
         const groupId = groupDoc.id;
         const groupData = groupDoc.data();
 
-        // Check if user already has this group in their subcollection
         const userGroupRef = doc(db, "Users", user.uid, "groups", groupId);
         const userGroupDoc = await getDoc(userGroupRef);
         if (userGroupDoc.exists()) {
@@ -198,12 +237,10 @@ export default {
           return;
         }
 
-        // Add user to top-level group
         await updateDoc(groupDoc.ref, {
           members: arrayUnion(user.uid)
         });
 
-        // Add to user's subcollection
         await setDoc(userGroupRef, {
           name: groupData.name,
           inviteCode: groupData.inviteCode,
@@ -247,87 +284,130 @@ export default {
 };
 </script>
 
-  
-  <style scoped>
-  .family-container {
-    max-width: 900px;
-    margin: 0 auto;
-    text-align: center;
-    background: #fdf6e3;
-    padding: 20px;
-    border-radius: 10px;
-  }
-  
-  .header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-  }
-  
-  .buttons {
-    display: flex;
-    gap: 10px;
-  }
-  
-  .btn {
-    padding: 10px 15px;
-    border: none;
-    font-size: 16px;
-    cursor: pointer;
-    border-radius: 5px;
-  }
-  
-  .create-btn {
-    background-color: #627EA4;
-    color: white;
-  }
-  
-  .join-btn {
-    background-color: #A9C4EA;
-    color: white;
-  }
-  
-  .group-list {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 20px;
-  }
-  
-  .group-card {
-    width: 250px;
-    background: white;
-    border-radius: 10px;
-    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
-    overflow: hidden;
-    padding: 15px;
-    text-align: center;
-    cursor: pointer;
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-  }
-  
-  .group-header {
-    font-size: 18px;
-    font-weight: bold;
-    padding: 10px;
-    border-bottom: 2px solid #ccc;
-  }
-  
-  .group-body {
-    padding: 15px;
-  }
-  
-  .group-image {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    margin-bottom: 10px;
-  }
-  
-  .group-code {
-    font-size: 14px;
-    color: #555;
-  }
-  </style>
-  
+<style scoped>
+.family-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  background: #fefae0;
+  padding: 40px 20px;
+  border-radius: 16px;
+  text-align: center;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #3e533f;
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 30px;
+  color: white;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.btn {
+  padding: 10px 18px;
+  font-size: 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.create-btn {
+  background-color: #627ea4;
+  color: white;
+}
+
+.join-btn {
+  background-color: #a9c4ea;
+  color: white;
+}
+
+.group-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 30px;
+  justify-content: center;
+}
+
+.group-card {
+  width: 250px;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 4px solid #ccc;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  cursor: pointer;
+}
+
+.group-card:hover {
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+.group-header {
+  padding: 16px;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.group-body {
+  padding: 20px;
+  text-align: center;
+}
+
+.group-image {
+  width: 90px;
+  height: 90px;
+  object-fit: cover;
+  border-radius: 50%;
+  margin-bottom: 12px;
+  border: 2px solid #ccc;
+}
+
+.group-members,
+.group-total,
+.group-code {
+  margin: 5px 0;
+  font-size: 14px;
+  color: #444;
+}
+
+.empty-state {
+  font-size: 18px;
+  color: #888;
+  margin-top: 50px;
+}
+
+.color-swatch-container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 10px;
+  gap: 10px;
+}
+
+.color-swatch {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.2s ease, border 0.2s ease;
+}
+
+.color-swatch:hover {
+  transform: scale(1.1);
+}
+</style>
