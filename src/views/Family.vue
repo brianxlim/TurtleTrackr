@@ -56,137 +56,197 @@
   </template>
   
   <script>
-  import { db, auth } from "@/firebase";
-  import { collection, addDoc, getDocs, query, where, updateDoc, arrayUnion } from "firebase/firestore";
-  import { useRouter } from 'vue-router';
+import { db, auth } from "@/firebase";
+import {
+  collection,
+  doc,
+  addDoc,
+  getDoc,
+  getDocs,
+  setDoc,
+  deleteDoc,
+  query,
+  where,
+  updateDoc,
+  arrayUnion,
+  onSnapshot
+} from "firebase/firestore";
+import { useRouter } from 'vue-router';
 
-  export default {
-    setup() {
-      const router = useRouter();
+export default {
+  setup() {
+    const router = useRouter();
 
-      const goToGroupDetails = (groupId) => {
-        router.push({ name: "FamilyDetails", params: { id: groupId } });
+    const goToGroupDetails = (groupId) => {
+      router.push({ name: "FamilyDetails", params: { id: groupId } });
+    };
+
+    return { goToGroupDetails };
+  },
+
+  data() {
+    return {
+      showCreateGroupModal: false,
+      showJoinGroupModal: false,
+      newGroupName: "",
+      joinGroupCode: "",
+      groups: [],
+      loading: false,
+      unsubscribe: null
+    };
+  },
+
+  mounted() {
+    this.listenToUserGroups();
+  },
+
+  beforeUnmount() {
+    if (this.unsubscribe) this.unsubscribe();
+  },
+
+  methods: {
+    generateGroupCode() {
+      return Math.random().toString(36).substring(2, 10).toUpperCase();
+    },
+
+    async createGroup() {
+      if (!this.newGroupName.trim()) {
+        alert("Please enter a group name");
+        return;
+      }
+
+      const user = auth.currentUser;
+      if (!user) {
+        alert("You must be logged in to create a group.");
+        return;
+      }
+
+      this.loading = true;
+      const groupCode = this.generateGroupCode();
+
+      const newGroup = {
+        name: this.newGroupName,
+        image: "/images/default.png",
+        members: [user.uid],
+        totalSpent: 0,
+        inviteCode: groupCode,
+        color: "#C0C0C0",
+        createdBy: user.uid,
+        createdAt: new Date()
       };
 
-      return { goToGroupDetails };
+      try {
+        // 1. Add to global `groups/` collection
+        const groupDocRef = await addDoc(collection(db, "groups"), newGroup);
+        const groupId = groupDocRef.id;
+
+        // 2. Add to this user's `Users/{uid}/groups/{groupId}` subcollection
+        await setDoc(doc(db, "Users", user.uid, "groups", groupId), {
+          name: newGroup.name,
+          inviteCode: newGroup.inviteCode,
+          joinedAt: new Date()
+        });
+
+        alert(`Group created successfully! Invite Code: ${groupCode}`);
+      } catch (err) {
+        console.error("Error creating group:", err);
+        alert("Error creating group. Please try again.");
+      }
+
+      this.newGroupName = "";
+      this.showCreateGroupModal = false;
+      this.loading = false;
     },
 
-    data() {
-      return {
-        showCreateGroupModal: false,
-        showJoinGroupModal: false,
-        newGroupName: "",
-        joinGroupCode: "",
-        groups: [],
-        loading: false
-      };
-    },
-    async mounted() {
-      await this.fetchGroups();
-    },
-    methods: {
+    async joinGroup() {
+      if (!this.joinGroupCode.trim()) {
+        alert("Please enter a group invite code.");
+        return;
+      }
 
-      goToGroupDetails(groupId) {
-      this.$router.push({ name: "FamilyDetails", params: { id: groupId } });
-      },
-      generateGroupCode() {
-        return Math.random().toString(36).substring(2, 10).toUpperCase();
-      },
-      async createGroup() {
-        if (!this.newGroupName.trim()) {
-          alert("Please enter a group name");
-          return;
-        }
-  
-        const user = auth.currentUser;
-        if (!user) {
-          alert("You must be logged in to create a group.");
-          return;
-        }
-  
-        this.loading = true;
-        const groupCode = this.generateGroupCode();
-  
-        const newGroup = {
-          name: this.newGroupName,
-          image: "/images/default.png",
-          members: [user.uid],
-          totalSpent: 0,
-          groupCode,
-          color: "#C0C0C0",
-          createdBy: user.uid,
-          createdAt: new Date()
-        };
-  
-        try {
-          const docRef = await addDoc(collection(db, "groups"), newGroup);
-          this.groups.push({ id: docRef.id, ...newGroup });
-  
-          this.showCreateGroupModal = false;
-          this.newGroupName = "";
-          alert(`Group created successfully! Invite Code: ${groupCode}`);
-        } catch (error) {
-          console.error("Error creating group:", error);
-          alert("Error creating group. Please try again.");
-        }
-  
-        this.loading = false;
-      },
-      async joinGroup() {
-        if (!this.joinGroupCode.trim()) {
-          alert("Please enter a group invite code.");
-          return;
-        }
-  
-        const user = auth.currentUser;
-        if (!user) {
-          alert("You must be logged in to join a group.");
-          return;
-        }
-  
-        this.loading = true;
-        const groupsRef = collection(db, "groups");
-        const querySnapshot = await getDocs(query(groupsRef, where("groupCode", "==", this.joinGroupCode)));
-  
-        if (querySnapshot.empty) {
-          alert("Invalid group code. Please try again.");
+      const user = auth.currentUser;
+      if (!user) {
+        alert("You must be logged in to join a group.");
+        return;
+      }
+
+      this.loading = true;
+
+      try {
+        const groupQuery = query(
+          collection(db, "groups"),
+          where("inviteCode", "==", this.joinGroupCode.trim().toUpperCase())
+        );
+        const groupSnapshot = await getDocs(groupQuery);
+
+        if (groupSnapshot.empty) {
+          alert("Invalid invite code. Please try again.");
           this.loading = false;
           return;
         }
-  
-        querySnapshot.forEach(async (doc) => {
-          const groupRef = doc.ref;
-          const groupData = doc.data();
-  
-          if (!groupData.members.includes(user.uid)) {
-            await updateDoc(groupRef, {
-              members: arrayUnion(user.uid)
-            });
-            alert("You have successfully joined the group!");
-            this.fetchGroups();
-          } else {
-            alert("You are already in this group.");
-          }
-        });
-  
-        this.showJoinGroupModal = false;
-        this.joinGroupCode = "";
-        this.loading = false;
-      },
-      async fetchGroups() {
-        try {
-          const querySnapshot = await getDocs(collection(db, "groups"));
-          this.groups = querySnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          }));
-        } catch (error) {
-          console.error("Error fetching groups:", error);
+
+        const groupDoc = groupSnapshot.docs[0];
+        const groupId = groupDoc.id;
+        const groupData = groupDoc.data();
+
+        // Check if user already has this group in their subcollection
+        const userGroupRef = doc(db, "Users", user.uid, "groups", groupId);
+        const userGroupDoc = await getDoc(userGroupRef);
+        if (userGroupDoc.exists()) {
+          alert("You are already a member of this group.");
+          this.loading = false;
+          return;
         }
+
+        // Add user to top-level group
+        await updateDoc(groupDoc.ref, {
+          members: arrayUnion(user.uid)
+        });
+
+        // Add to user's subcollection
+        await setDoc(userGroupRef, {
+          name: groupData.name,
+          inviteCode: groupData.inviteCode,
+          joinedAt: new Date()
+        });
+
+        alert("You have successfully joined the group!");
+      } catch (err) {
+        console.error("Error joining group:", err);
+        alert("Error joining group. Please try again.");
       }
+
+      this.joinGroupCode = "";
+      this.showJoinGroupModal = false;
+      this.loading = false;
+    },
+
+    listenToUserGroups() {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      const userGroupsRef = collection(db, "Users", user.uid, "groups");
+      this.unsubscribe = onSnapshot(userGroupsRef, async (snapshot) => {
+        const updatedGroups = [];
+
+        for (const docSnap of snapshot.docs) {
+          const groupId = docSnap.id;
+          const groupDoc = await getDoc(doc(db, "groups", groupId));
+          if (groupDoc.exists()) {
+            updatedGroups.push({
+              id: groupId,
+              ...groupDoc.data()
+            });
+          }
+        }
+
+        this.groups = updatedGroups;
+      });
     }
-  };
-  </script>
+  }
+};
+</script>
+
   
   <style scoped>
   .family-container {
