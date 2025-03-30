@@ -46,7 +46,7 @@ export default {
 
     const fetchGroupDetails = async () => {
       try {
-        const groupRef = doc(db, "groups", groupId);
+        const groupRef = doc(db, "Groups", groupId);
         const groupSnap = await getDoc(groupRef);
 
         if (groupSnap.exists()) {
@@ -138,39 +138,45 @@ export default {
 <style scoped>
 .family-details {
   max-width: 600px;
-  margin: 0 auto;
-  text-align: center;
-  padding: 20px;
+  margin: 2rem auto;
+  padding: 3rem;
   background: #fff;
-  border-radius: 10px;
+  border-radius: 2rem;
   box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
 }
 
+/* Responsiveness to mobile */
+@media (max-width: 800px) {
+  .family-details {
+    width: 80%;
+  }
+}
+
 .back-btn {
-  background: #627EA4;
-  color: white;
-  padding: 8px 12px;
+  background: var(--color-accent-dark);
+  color: #fff;
+  padding: 0.4rem 0.8rem;
   border: none;
   cursor: pointer;
-  border-radius: 5px;
-  font-size: 16px;
-  margin-bottom: 20px;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  margin: 0 0 1rem 0;
 }
 
 .leave-btn {
   background-color: #e57373;
   color: white;
-  padding: 10px 20px;
-  margin-top: 20px;
+  padding: 0.625rem 1.25rem;
+  margin-top: 1.25rem;
   border: none;
   cursor: pointer;
-  border-radius: 5px;
-  font-size: 16px;
+  border-radius: 0.3125rem;
+  font-size: 1rem;
 }
 
 .group-info p {
-  font-size: 18px;
-  margin: 5px 0;
+  font-size: 1.125rem;
+  margin: 0.3125rem 0;
 }
 
 ul {
@@ -180,15 +186,15 @@ ul {
 
 li {
   background: #f4f4f4;
-  margin: 5px 0;
-  padding: 10px;
-  border-radius: 5px;
+  margin: 0.5rem 0;
+  padding: 0.8rem;
+  border-radius: 0.5rem;
 }
 
 .loading {
   text-align: center;
-  font-size: 18px;
+  font-size: 1.125rem;
   color: gray;
-  margin-top: 20px;
+  margin-top: 1.25rem;
 }
 </style>

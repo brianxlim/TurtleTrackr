@@ -38,13 +38,13 @@
 
 <script>
 import { db, auth } from "@/firebase";
-import { doc, collection, addDoc, getDoc, getDocs, query, where, Timestamp, setDoc } from "firebase/firestore";
+import { doc, collection, getDoc, getDocs, setDoc } from "firebase/firestore";
 
-import GoalPieChart from "@/components/GoalPieChart.vue";
+import GoalPieChart from "@/components/Goals/GoalPieChart.vue";
 import NavBar from "@/components/NavBar/NavBar.vue";
 import DateSelection from "@/components/DateSelection.vue";
-import GoalSetter from "@/components/GoalSetter.vue";
-import IndividualGoals from "@/components/IndividualGoals.vue";
+import GoalSetter from "@/components/Goals/GoalSetter.vue";
+import IndividualGoals from "@/components/Goals/IndividualGoals.vue";
 
 export default {
     components: {

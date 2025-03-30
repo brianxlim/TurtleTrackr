@@ -65,7 +65,7 @@
 import { ref, watchEffect } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '@/stores/AuthStores';
-import AvatarSelection from '@/components/AvatarSelection.vue';
+import AvatarSelection from '@/components/Profile/AvatarSelection.vue';
 import AltAuthMethod from '@/components/Auth/AltAuthMethod.vue';
 import PasswordValidator from '@/components/Auth/PasswordValidator.vue';
 

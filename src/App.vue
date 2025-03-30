@@ -5,7 +5,7 @@
 </template>
 
 <script setup>
-import AvatarModal from './components/AvatarModal.vue';
+import AvatarModal from './components/Profile/AvatarModal.vue';
 import NavBar from './components/NavBar/NavBar.vue';
 import { useAuthStore } from './stores/AuthStores';
 
