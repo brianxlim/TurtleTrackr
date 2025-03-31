@@ -30,7 +30,7 @@ h1 {
 }
 
 .btn {
-    font-family: 'Poppins';
+    font-family: var(--font-body);
     padding: 0.625rem 1.125rem;
     font-size: 1rem;
     border: none;

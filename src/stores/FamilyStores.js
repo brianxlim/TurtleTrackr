@@ -1,4 +1,3 @@
-// src/stores/familyStore.js
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import { auth, db } from "@/firebase";
@@ -8,19 +7,17 @@ export const useFamilyStore = defineStore("familyStore", () => {
   const groups = ref([]);
   let unsubscribe = null;
   const isListening = ref(false);
+  const initialLoadComplete = ref(false);
 
   const listenToUserGroups = () => {
-    // If we already have a subscription, do nothing.
-    if (isListening.value) return;
     const user = auth.currentUser;
     if (!user) return;
+    // Prevent multiple subscriptions.
+    if (unsubscribe) return;
 
-    // Use the user's subcollection "Groups" (case-sensitive)
     const userGroupsRef = collection(db, "Users", user.uid, "Groups");
     unsubscribe = onSnapshot(userGroupsRef, async (snapshot) => {
       const updatedGroups = [];
-      // For each group document reference in the user's subcollection,
-      // load the full group data from the main "Groups" collection.
       for (const groupDocSnap of snapshot.docs) {
         const groupId = groupDocSnap.id;
         const groupDoc = await getDoc(doc(db, "Groups", groupId));
@@ -29,11 +26,12 @@ export const useFamilyStore = defineStore("familyStore", () => {
         }
       }
       groups.value = updatedGroups;
+      initialLoadComplete.value = true; // Signal that data has been loaded (even if empty)
     });
     isListening.value = true;
   };
 
-  // Optionally, you could provide a stopListening method (for example, when a user logs out)
+  // Optionally, you can provide a method to stop listening.
   const stopListening = () => {
     if (unsubscribe) {
       unsubscribe();
@@ -42,5 +40,5 @@ export const useFamilyStore = defineStore("familyStore", () => {
     }
   };
 
-  return { groups, listenToUserGroups, stopListening, isListening };
+  return { groups, listenToUserGroups, stopListening, isListening, initialLoadComplete };
 });
