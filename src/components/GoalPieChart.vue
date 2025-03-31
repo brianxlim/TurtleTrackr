@@ -3,7 +3,8 @@
       <div class="pie-chart">
         <canvas ref="chartCanvas"></canvas>
         <div class="center-text">
-          <h2>${{ totalSpent.toFixed(2) }} / ${{ totalSet.toFixed(2) }}</h2>
+          <h2 v-if="totalSpent < totalSet" class="within-budget">${{ totalSpent.toFixed(2) }} / ${{ totalSet.toFixed(2) }}</h2>
+          <h2 v-else class="exceed-budget">${{ totalSpent.toFixed(2) }} / ${{ totalSet.toFixed(2) }}</h2>
         </div>
       </div>
     </div>
@@ -96,6 +97,13 @@ export default {
     transform: translate(-50%, -50%);
     text-align: center;
     color: #3d5538;
+}
+.within-budget {
+    color:#3d5538
+}
+
+.exceed-budget {
+    color: red;
 }
 
 </style>

@@ -38,7 +38,7 @@
 
 <script>
 import { db, auth } from "@/firebase";
-import { doc, collection, addDoc, getDoc, getDocs, query, where, Timestamp, setDoc } from "firebase/firestore";
+import { doc, collection, addDoc, getDoc, getDocs, query, where, Timestamp, setDoc, onSnapshot } from "firebase/firestore";
 
 import GoalPieChart from "@/components/GoalPieChart.vue";
 import NavBar from "@/components/NavBar/NavBar.vue";
@@ -74,6 +74,7 @@ export default {
     },
     mounted() {
         this.loadGoalsFromFirestore();
+        this.setupExpenseListener();
     },
     computed: {
         isCurrentMonth() {
@@ -275,7 +276,61 @@ export default {
                 return;
             }
             this.showGoalSetter = false;
-        }
+        },
+        //in experiment, currently does help update database value automatically, but not sure if the naming convention of document ID under subcollection "Goals" will still be YYYY-MM, or will it go back to just random IDs
+        setupExpenseListener() {
+            const user = auth.currentUser;
+            if (!user) return;
+
+            const expenseRef = collection(db, "Users", user.uid, "Expenses");
+
+            onSnapshot(expenseRef, async (snapshot) => {
+            const categoryMap = {
+                Food: 0,
+                Travel: 0,
+                Shopping: 0,
+                Others: 0,
+            };
+            let totalSpent = 0;
+
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                const amount = parseFloat(data.Amount || 0);
+                totalSpent += amount;
+
+                const cat = categoryMap.hasOwnProperty(data.Category) ? data.Category : "Others";
+                categoryMap[cat] += amount;
+            });
+
+            // Update UI in real-time
+            this.totalSpent = totalSpent;
+            this.categories = this.categories.map(c => ({
+                ...c,
+                amount: categoryMap[c.name] || 0
+            }));
+
+            // Also update Firestore "Goals" subcollection
+            const currentMonth = `${this.selectedYear}-${String(this.selectedMonth).padStart(2, '0')}`;
+            const userGoalsRef = doc(db, "Users", user.uid, "Goals", currentMonth);
+            const docSnapshot = await getDoc(userGoalsRef);
+
+            if (docSnapshot.exists()) {
+                const data = docSnapshot.data();
+                const updatedData = {
+                ...data,
+                totalSpent,
+                categories: data.categories.map((c) => ({
+                    ...c,
+                    spent: categoryMap[c.name] || 0
+                })),
+                updatedAt: new Date()
+                };
+
+                await setDoc(userGoalsRef, updatedData, { merge: true });
+                console.log("🔥 Real-time Goal spending updated");
+            }
+            });
+        },
     },
 };
 </script>
