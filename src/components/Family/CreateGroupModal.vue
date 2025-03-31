@@ -54,27 +54,27 @@ const generateGroupCode = () => {
 
 const createGroup = async () => {
     if (!newGroupName.value.trim()) {
-    alert("Please enter a group name");
-    return;
+        alert("Please enter a group name");
+        return;
     }
 
     const user = auth.currentUser;
     if (!user) {
-    alert("You must be logged in to create a group.");
-    return;
+        alert("You must be logged in to create a group.");
+        return;
     }
 
     loading.value = true;
     const groupCode = generateGroupCode();
     const newGroup = {
-    name: newGroupName.value,
-    image: "/images/default.png",
-    members: [user.uid],
-    totalSpent: 0,
-    inviteCode: groupCode,
-    color: selectedColor.value || "#C0C0C0",
-    createdBy: user.uid,
-    createdAt: new Date()
+        name: newGroupName.value,
+        image: "/images/default.png",
+        members: [user.uid],
+        totalSpent: 0,
+        inviteCode: groupCode,
+        color: selectedColor.value || "#C0C0C0",
+        createdBy: user.uid,
+        createdAt: new Date()
     };
 
     try {
@@ -192,7 +192,7 @@ const emitClose = () => {
     border: 0.09375rem solid #ccc;
     margin-bottom: 0.9375rem;
     box-sizing: border-box;
-    font-family: 'Poppins';
+    font-family: var(--font-body);
 }
 
 .color-label {

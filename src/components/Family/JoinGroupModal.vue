@@ -17,63 +17,65 @@ import { db, auth } from '@/firebase';
 import { query, collection, where, getDocs, updateDoc, arrayUnion, doc, setDoc, getDoc } from 'firebase/firestore';
 import confetti from 'canvas-confetti';
 
+const emit = defineEmits(["groupJoined", "close"]);
+
 const joinGroupCode = ref("");
 const loading = ref(false);
 
 const joinGroup = async () => {
     if (!joinGroupCode.value.trim()) {
-    alert("Please enter a group invite code.");
-    return;
+        alert("Please enter a group invite code.");
+        return;
     }
 
     const user = auth.currentUser;
     if (!user) {
-    alert("You must be logged in to join a group.");
-    return;
+        alert("You must be logged in to join a group.");
+        return;
     }
 
     loading.value = true;
 
     try {
-    const groupQuery = query(
-        collection(db, "Groups"),
-        where("inviteCode", "==", joinGroupCode.value.trim().toUpperCase())
-    );
-    const groupSnapshot = await getDocs(groupQuery);
+        const groupQuery = query(
+            collection(db, "Groups"),
+            where("inviteCode", "==", joinGroupCode.value.trim().toUpperCase())
+        );
+        const groupSnapshot = await getDocs(groupQuery);
 
-    if (groupSnapshot.empty) {
-        alert("Invalid invite code. Please try again.");
-        loading.value = false;
-        return;
-    }
+        if (groupSnapshot.empty) {
+            alert("Invalid invite code. Please try again.");
+            loading.value = false;
+            return;
+        }
 
-    const groupDoc = groupSnapshot.docs[0];
-    const groupId = groupDoc.id;
-    const groupData = groupDoc.data();
+        const groupDoc = groupSnapshot.docs[0];
+        const groupId = groupDoc.id;
+        const groupData = groupDoc.data();
 
-    const userGroupRef = doc(db, "Users", user.uid, "Groups", groupId);
-    const userGroupDoc = await getDoc(userGroupRef);
-    if (userGroupDoc.exists()) {
-        alert("You are already a member of this group.");
-        loading.value = false;
-        return;
-    }
+        const userGroupRef = doc(db, "Users", user.uid, "Groups", groupId);
+        const userGroupDoc = await getDoc(userGroupRef);
+        if (userGroupDoc.exists()) {
+            alert("You are already a member of this group.");
+            loading.value = false;
+            return;
+        }
 
-    await updateDoc(groupDoc.ref, {
-        members: arrayUnion(user.uid)
-    });
+        await updateDoc(groupDoc.ref, {
+            members: arrayUnion(user.uid)
+        });
 
-    await setDoc(userGroupRef, {
-        name: groupData.name,
-        inviteCode: groupData.inviteCode,
-        joinedAt: new Date()
-    });
+        await setDoc(userGroupRef, {
+            name: groupData.name,
+            inviteCode: groupData.inviteCode,
+            joinedAt: new Date()
+        });
 
-    confetti({
-        particleCount: 120,
-        spread: 100,
-        origin: { y: 0.7 },
-    });
+        confetti({
+            particleCount: 120,
+            spread: 100,
+            origin: { y: 0.7 },
+        });
     } catch (err) {
         console.error("Error joining group:", err);
         alert("Error joining group. Please try again.");
@@ -81,8 +83,10 @@ const joinGroup = async () => {
 
     joinGroupCode.value = "";
     loading.value = false;
-    // Emit event to notify parent that a group has been joined
-    $emit("groupJoined");
+
+    // Emit events to notify the parent component.
+    emit("groupJoined");
+    emit("close");
 };
 </script>
 

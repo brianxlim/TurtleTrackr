@@ -216,7 +216,7 @@ button {
     border-radius: 1rem;
     border: 1px solid #ddd;
     padding: 0.5rem 1rem;
-    font-family: 'Poppins';
+    font-family: var(--font-body);
     font-size: 1rem;
     color: white;
 }
