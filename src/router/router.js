@@ -40,7 +40,7 @@ const routes = [
     meta: { requiresAuth: true }
   },
   { 
-    path: '/history',
+    path: '/history/:uid?',
     name: 'History',
     component: History,
     meta: { requiresAuth: true }

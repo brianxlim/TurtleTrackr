@@ -17,7 +17,8 @@
 
 <script setup>
 import { ref } from 'vue';
-import { getAuth, reauthenticateWithCredential, EmailAuthProvider, updatePassword } from 'firebase/auth';
+import { reauthenticateWithCredential, EmailAuthProvider, updatePassword } from 'firebase/auth';
+import { auth } from '@/firebase';
 
 const emit = defineEmits(['close']);
 const currentPassword = ref('');
@@ -44,7 +45,6 @@ const handleChange = async() => {
 
     try {
         loading.value = true;
-        const auth = getAuth();
         const user = auth.currentUser;
         const credential = EmailAuthProvider.credential(user.email, currentPassword.value);
 

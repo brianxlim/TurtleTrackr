@@ -70,7 +70,7 @@ button {
     background-color: var(--color-main-light);
     cursor: pointer;
     font-size: 1rem;
-    font-family: 'Poppins';
+    font-family: var(--font-body);
     align-self: center;
 }
 

@@ -65,7 +65,7 @@
 import { ref, watchEffect } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '@/stores/AuthStores';
-import AvatarSelection from '@/components/AvatarSelection.vue';
+import AvatarSelection from '@/components/Profile/AvatarSelection.vue';
 import AltAuthMethod from '@/components/Auth/AltAuthMethod.vue';
 import PasswordValidator from '@/components/Auth/PasswordValidator.vue';
 
@@ -208,7 +208,7 @@ input {
   padding: 1rem;
   border: 1px solid #ccc;
   border-radius: 1rem;
-  font-family: 'Poppins';
+  font-family: var(--font-body);
 }
 
 button {
@@ -219,7 +219,7 @@ button {
   background-color: var(--color-main-light);
   cursor: pointer;
   font-size: 1rem;
-  font-family: 'Poppins';
+  font-family: var(--font-body);
   align-self: center;
 }
 

@@ -96,7 +96,7 @@
     border-radius: 10px;
     border: 1px solid #ccc;
     font-size: 1rem;
-    font-family: 'Poppins';
+    font-family: var(--font-body);
     margin-bottom: 2rem;
   }
   
@@ -108,7 +108,7 @@
     background-color: var(--color-main-light);
     cursor: pointer;
     font-size: 1rem;
-    font-family: 'Poppins';
+    font-family: var(--font-body);
     align-self: center;
   }
   

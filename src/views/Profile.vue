@@ -49,8 +49,8 @@
 import { ref, watch, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/AuthStores';
-import EditProfile from '@/components/EditProfile.vue';
-import ChangePasswordModal from '@/components/ChangePasswordModal.vue';
+import EditProfile from '@/components/Profile/EditProfile.vue';
+import ChangePasswordModal from '@/components/Profile/ChangePasswordModal.vue';
 
 
 const authStore = useAuthStore();
@@ -206,7 +206,6 @@ input {
     text-decoration: underline;
     cursor: pointer;
     padding-right: 1rem;
-    padding-top: 0.5rem;
 }
 
 #change-password-text:hover {
@@ -217,7 +216,7 @@ button {
     border-radius: 1rem;
     border: 1px solid #ddd;
     padding: 0.5rem 1rem;
-    font-family: 'Poppins';
+    font-family: var(--font-body);
     font-size: 1rem;
     color: white;
 }
