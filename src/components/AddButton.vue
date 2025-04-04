@@ -37,12 +37,20 @@
                 <option value="Others">Others</option>
               </select>
             </div>
+            <!-- Group Selection: Send Highlights to -->
             <div class="form-group">
               <label for="highlights">Send Highlights to:</label>
-              <input type="text" id="highlights" v-model="formData.highlights" placeholder="Optional">
+              <select id="highlights" v-model="formData.highlights">
+                <!-- Default option "None" -->
+                <option value="" disabled>None</option>
+                <option value="">None</option> <!-- None option -->
+                <!-- Dropdown options dynamically populated from groups -->
+                <option v-for="group in groups" :key="group.id" :value="group.id">{{ group.name }}</option>
+              </select>
             </div>
-          </div>
 
+
+          </div>
           <!-- Buttons -->
           <div class="button-group">
             <button class="add-expense" id="saveButton" @click.prevent="savetofs()">Add</button>
@@ -55,8 +63,7 @@
 </template>
 
 <script>
-import firebaseApp from '../firebase.js';
-import { getFirestore, collection, addDoc } from "firebase/firestore";
+import { getFirestore, collection, addDoc, getDocs } from "firebase/firestore";
 import { db } from "@/firebase.js";
 import { auth } from "@/firebase.js";
 
@@ -70,10 +77,18 @@ export default {
         amount: "",
         date: today, // Default to today's date
         category: "",
-        highlights: "",
+        highlights: [],
       },
+      groups: [],
       maxDate: today, // Restrict future dates
     };
+  },
+  watch: {
+    isModalOpen(newVal) {
+      if (newVal) {
+        this.fetchGroups();
+      }
+    }
   },
   methods: {
     openModal() {
@@ -82,6 +97,31 @@ export default {
     closeModal() {
       this.isModalOpen = false;
       this.resetForm();
+    },
+    async fetchGroups() {
+      try {
+        const user = auth.currentUser;
+        if (!user) {
+          console.warn("⚠️ No user logged in");
+          return;
+        }
+        console.log(`🔍 Fetching groups for user: ${user.uid}`);
+
+        const groupsRef = collection(db, "Users", user.uid, "Groups"); // Correct path to 'Groups'
+        const snapshot = await getDocs(groupsRef);
+
+        // Check if any groups were fetched
+        if (snapshot.empty) {
+          console.log("No groups found.");
+          return;
+        }
+
+        // Map the fetched data to the groups array
+        this.groups = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        console.log("Fetched groups:", this.groups);
+      } catch (error) {
+        console.error("❌ Error fetching groups: ", error);
+      }
     },
     resetForm() {
       this.formData = {
@@ -109,7 +149,7 @@ export default {
         alert("You cannot log an expense for a future date.");
         return false;
       }
-      
+
       return true;
     },
     async savetofs() {
@@ -179,22 +219,24 @@ export default {
 }
 
 .modal-content {
-  background: rgb(206, 220, 204); 
-  padding: 20px; 
-  border-radius: 10px; 
-  width: 50%; 
-  max-width: 800px; 
-  text-align: left; 
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); 
-  display: flex; 
-  flex-direction: column; 
-  gap: 15px; 
-  border: 2px solid rgb(57,68,61);
-  box-sizing: border-box; 
-  overflow-y: auto; 
+  background: rgb(206, 220, 204);
+  padding: 20px;
+  border-radius: 10px;
+  width: 50%;
+  max-width: 800px;
+  text-align: left;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  border: 2px solid rgb(57, 68, 61);
+  box-sizing: border-box;
+  overflow-y: auto;
 }
 
-input, select, textarea {
+input,
+select,
+textarea {
   width: 100%;
   padding: 8px;
   font-size: 10px;
@@ -207,16 +249,16 @@ input, select, textarea {
   padding: 5px 10px;
   background: #d8c49d;
   color: black;
-  border: 2px solid rgb(57,68,61);
+  border: 2px solid rgb(57, 68, 61);
   cursor: pointer;
 }
 
 .add-expense {
   margin-top: 10px;
   padding: 5px 15px;
-  background: rgba(254,243,220,255);
+  background: rgba(254, 243, 220, 255);
   color: black;
-  border: 2px solid rgb(57,68,61);
+  border: 2px solid rgb(57, 68, 61);
   cursor: pointer;
 }
 
