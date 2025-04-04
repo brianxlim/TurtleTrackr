@@ -1,3 +1,4 @@
+import Landing from '@/views/Landing.vue';
 import { createRouter, createWebHistory } from 'vue-router';
 import Home from '@/views/Home.vue';
 import Family from '@/views/Family.vue';
@@ -12,8 +13,8 @@ const routes = [
   // Use a dynamic redirect for the root path
   {
     path: '/',
-    name: 'Root',
-    redirect: () => (auth.currentUser ? '/home' : '/auth'),
+    name: 'Landing',
+    component: Landing
   },
   { 
     path: '/auth',
@@ -72,10 +73,10 @@ router.beforeEach((to, from, next) => {
   if (to.path === '/auth' && loggedIn) {
     next({ path: '/home' });
   }
-  // If navigating to the root, redirect based on login status
-  else if (to.path === '/') {
-    next(loggedIn ? '/home' : '/auth');
-  }
+  // // If navigating to the root, redirect based on login status
+  // else if (to.path === '/') {
+  //   next(loggedIn ? '/home' : '/auth');
+  // }
   // If the route requires auth and user isn't logged in, redirect to /auth
   else if (to.meta.requiresAuth && !loggedIn) {
     next({ path: '/auth' });
