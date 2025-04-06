@@ -1,23 +1,22 @@
 <template>
   <div v-if="group" class="family-details">
+    <div class="group-header-box">
+      
+  <div class="left">
+    <h2>{{ group.name }}</h2>
+    <p class="subtext">{{ Object.values(memberDisplayNames).join(", ") }}</p>
+    <p class="group-id">Group ID: {{ group.inviteCode }}</p>
+  </div>
+
+  <div class="right">
+    <p class="total">Total: ${{ totalSpent.toFixed(2) }}</p>
+    <button class="leave-btn" @click="confirmLeaveGroup">Leave Family</button>
+  </div>
+</div>
+
+<FamilyBarChart :members="memberSpendingData" v-if="memberSpendingData.length" />
+
     <button class="back-btn" @click="$router.back()">← Back</button>
-
-    <h1>{{ group.name }}</h1>
-
-    <div class="group-info">
-      <p><strong>Invite Code:</strong> {{ group.inviteCode }}</p>
-      <p><strong>Total Spent:</strong> ${{ totalSpent.toFixed(2) }}</p>
-    </div>
-
-    <FamilyBarChart :members="memberSpendingData" v-if="memberSpendingData.length" />
-
-    <h2>Members:</h2>
-    <ul>
-      <li v-for="(displayName, uid) in memberDisplayNames" :key="uid">
-        {{ displayName }}
-      </li>
-    </ul>
-
     <button class="leave-btn" @click="confirmLeaveGroup">Leave Group</button>
   </div>
 
@@ -207,10 +206,11 @@ export default {
 
 <style scoped>
 .family-details {
-  max-width: 600px;
+  max-width: 1000px;
   margin: 0 auto;
   text-align: center;
   padding: 20px;
+  margin-top: 1%;
   background: #fff;
   border-radius: 10px;
   box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
@@ -225,6 +225,7 @@ export default {
   border-radius: 5px;
   font-size: 16px;
   margin-bottom: 20px;
+  margin-right: 10px;
 }
 
 .leave-btn {
@@ -260,5 +261,64 @@ li {
   font-size: 18px;
   color: gray;
   margin-top: 20px;
+}
+
+.group-header-box {
+  background-color: #3d5538;
+  color: white;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.group-header-box .left {
+  flex: 1 1 60%;
+}
+
+.group-header-box .right {
+  flex: 1 1 35%;
+  text-align: right;
+}
+
+.group-header-box h2 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.group-header-box .subtext {
+  font-size: 14px;
+  color: #dcdcdc;
+  margin-top: 4px;
+}
+
+.group-header-box .group-id {
+  font-size: 14px;
+  margin-top: 4px;
+  color: #c8c8c8;
+}
+
+.group-header-box .total {
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.group-header-box .leave-btn {
+  background-color: #e8bb82;
+  color: black;
+  border: none;
+  padding: 8px 16px;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.group-header-box .leave-btn:hover {
+  background-color: #dfaa63;
 }
 </style>

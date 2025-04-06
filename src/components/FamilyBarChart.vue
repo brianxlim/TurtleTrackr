@@ -1,7 +1,8 @@
+@ -0,0 +1,288 @@
 <template>
   <div class="chart-wrapper">
   <div class="left-panel">
-    <!-- Category Buttons -->
+    <!-- Category buttons -->
     <div class="category-selector">
       <button
         v-for="cat in ['Overall', 'Food', 'Travel', 'Shopping', 'Others']"
@@ -74,13 +75,13 @@ export default {
 
       const canvas = this.$refs.chartCanvas;
       const ctx = canvas?.getContext?.("2d");
-
+//jic ctx not ready
       if (!ctx) {
         console.warn("🚫canvas context not available");
         return;
       }
 
-      // Optional: destroy any chart already attached to this canvas
+      // destroy old chart to replace with new one
       const existing = Chart.getChart(canvas);
       if (existing) {
         console.log("🧨 Existing chart still active — destroying first");
@@ -96,12 +97,6 @@ export default {
           : m.categories?.[this.selectedCategory] || 0
       );
 
-      const allZero = data.every(val => val === 0);
-      if (allZero) {
-        console.warn("📭 No data to display for:", this.selectedCategory);
-        this.creating = false;
-        return;
-      }
 
       console.log("📊 Rendering chart for:", this.selectedCategory, data);
 
@@ -157,42 +152,39 @@ export default {
 
         }
       });
-      console.log("🧪 Chart rendering with members:", this.members);
+      console.log("chart rendering with members:", this.members);
       this.creating = false;
     },
 
     async selectCategory(cat) {
-      console.log("👉 Switching to category:", cat);
+  console.log("👉switching to category:", cat);
 
-      // Prevent re-entering while creating
-      if (this.creating) {
-        console.warn("⚠️ Already creating chart, skipping...");
-        return;
-      }
+  if (this.creating) {
+    console.warn("⚠️already creating chart, skipping...");
+    return;
+  }
 
-      this.selectedCategory = cat;
-      this.creating = true;
+// this is to prevent page being scrolled up everytime new chart is created
+  const scrollY = window.scrollY;
 
-      // Destroy previous chart
-      if (this.chart) {
-        console.log("🧨 Destroying old chart");
-        const existingChart = Chart.getChart(this.$refs.chartCanvas); // get Chart instance on canvas
-        if (existingChart) {
-          existingChart.destroy();
-          console.log("✅ Chart destroyed via Chart.getChart()");
-        }
-      }
+  this.selectedCategory = cat;
+  this.creating = true;
 
+  // 🧨 destroy old charts
+  if (this.chart) {
+    const existingChart = Chart.getChart(this.$refs.chartCanvas);
+    if (existingChart) {
+      existingChart.destroy();
+      console.log("✅ Chart destroyed");
+    }
+  }
 
-      // Toggle canvas to remount
-      this.ready = false;
-      await this.$nextTick();  // wait for canvas to unmount
-      this.ready = true;
-      await this.$nextTick();  // wait for canvas to remount
+  await this.createChart();
 
-      // Now it's safe to create the new chart
-      await this.createChart();
-    },
+  //restore the scroll position
+  window.scrollTo({ top: scrollY, behavior: 'instant' }); 
+}
+,
 
 
     beforeUnmount() {
