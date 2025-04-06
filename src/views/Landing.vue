@@ -10,19 +10,36 @@
 
       <p class="tagline">Slow, Steady, and Financially Ready.</p>
 
-      <button class="get-started-btn" @click="goToAuth">Get Started</button>
+      <button class="get-started-btn" @click="triggerSingleCoin">Get Started</button>
     </div>
+
+    <!-- 🪙 Single Center Coin -->
+    <img v-if="showCoin" src="/images/coin.png" class="center-coin" alt="Coin" />
   </div>
 </template>
 
 <script>
+import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 export default {
   setup() {
+    const showCoin = ref(false);
     const router = useRouter();
-    const goToAuth = () => router.push('/auth');
-    return { goToAuth };
+
+    const triggerSingleCoin = () => {
+      showCoin.value = true;
+
+      setTimeout(() => {
+        showCoin.value = false;
+        router.push('/auth');
+      }, 1000); // Coin disappears after 1s, then redirect
+    };
+
+    return {
+      showCoin,
+      triggerSingleCoin
+    };
   }
 };
 </script>
@@ -33,6 +50,7 @@ export default {
   background: url('/images/turtle-bg.jpg') center/cover no-repeat;
   position: relative;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   overflow: hidden;
@@ -76,7 +94,6 @@ export default {
   text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
 }
 
-/* Mobile friendly adjustments */
 @media (max-width: 600px) {
   .app-title {
     font-size: 48px;
@@ -114,5 +131,33 @@ export default {
 
 .get-started-btn:hover {
   transform: scale(1.05);
+}
+
+/* 🪙 Single Coin Style */
+.center-coin {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 100px;
+  height: 50px;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+  animation: spinFade 1s ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes spinFade {
+  0% {
+    transform: translate(-50%, -50%) scale(1) rotate(0deg);
+    opacity: 1;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.2) rotate(180deg);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(0.8) rotate(360deg);
+    opacity: 0;
+  }
 }
 </style>
