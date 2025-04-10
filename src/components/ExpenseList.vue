@@ -1,27 +1,26 @@
 <template>
   <div class="expense-list">
-      <div class="sort-options">
-          <label for="sortBy">Sort by:</label>
-          <select v-model="sortOption" @change="sortExpenses">
-              <option value="date-desc">Date (Newest to Oldest)</option>
-              <option value="date-asc">Date (Oldest to Newest)</option>
-              <option value="amount-desc">Amount (Highest to Lowest)</option>
-              <option value="amount-asc">Amount (Lowest to Highest)</option>
-          </select>
-      </div>
+    <div class="sort-options">
+      <label for="sortBy">Sort by:</label>
+      <select v-model="sortOption" @change="sortExpenses">
+        <option value="date-desc">Date (Newest to Oldest)</option>
+        <option value="date-asc">Date (Oldest to Newest)</option>
+        <option value="amount-desc">Amount (Highest to Lowest)</option>
+        <option value="amount-asc">Amount (Lowest to Highest)</option>
+      </select>
+    </div>
 
-      <div v-if="loading" class="loading">
-        <i class="pi pi-spin pi-spinner" style="font-size: 1rem"></i>
-      </div>
+    <div v-if="loading" class="loading">
+      <i class="pi pi-spin pi-spinner" style="font-size: 1rem"></i>
+    </div>
 
-      <div v-if="!loading && expenses.length === 0" class="no-history">
-          No history available.
-          <span v-if="isUser">Start adding your expenses now!</span>
-          <span v-else>This user does not have any expenses.</span>
-      </div>
-
-      <div v-else>
-          <!-- When sorting by amount, display a flat list -->
+    <div v-if="!loading && expenses.length === 0" class="no-history">
+      No history available.
+      <span v-if="isUser">Start adding your expenses now!</span>
+      <span v-else>This user does not have any expenses.</span>
+    </div>
+    <!-- <div v-else>
+          
           <div v-if="sortOption.includes('amount')">
               <ExpenseCard
                   v-for="expense in expenses"
@@ -31,7 +30,7 @@
                   @edit-expense="openModalForEditing"
               />
           </div>
-          <!-- Otherwise, group expenses by date -->
+          
           <div
               v-else
               v-for="(group, date) in groupedExpenses"
@@ -46,281 +45,329 @@
                   @delete-expense="deleteExpense"
                   @edit-expense="openModalForEditing"
               />
-          </div>
+          </div> -->
+    <div v-else>
+      <div v-if="sortOption.includes('amount')">
+        <ExpenseCard v-for="expense in paginatedExpenses" :key="expense.id" :expense="expense"
+          @delete-expense="deleteExpense" @edit-expense="openModalForEditing" />
       </div>
+      <div v-else>
+        <ExpenseCard v-for="expense in paginatedExpenses" :key="expense.id" :expense="expense"
+          @delete-expense="deleteExpense" @edit-expense="openModalForEditing" />
+      </div>
+    </div>
+
+    <!-- Pagination Controls -->
+    <div v-if="totalPages > 1" class="pagination">
+      <button @click="changePage(currentPage - 1)" :disabled="currentPage === 1">Prev</button>
+      <span>Page {{ currentPage }} of {{ totalPages }}</span>
+      <button @click="changePage(currentPage + 1)" :disabled="currentPage === totalPages">Next</button>
+    </div>
   </div>
 
   <!-- Expense Modal -->
   <div v-if="isModalOpen" class="modal-overlay" @click.self="closeModal">
-      <div class="modal-content">
-          <form @submit.prevent="saveExpense">
-              <!-- Title -->
-              <div class="form-group">
-                  <label for="title">Title*</label>
-                  <input type="text" id="title" v-model="formData.title" required />
-              </div>
+    <div class="modal-content">
+      <form @submit.prevent="saveExpense">
+        <!-- Title -->
+        <div class="form-group">
+          <label for="title">Title*</label>
+          <input type="text" id="title" v-model="formData.title" required />
+        </div>
 
-              <!-- Amount & Date -->
-              <div class="form-row">
-                  <div class="form-group">
-                      <label for="amount">Amount*</label>
-                      <input type="text" id="amount" v-model="formData.amount" required />
-                  </div>
-                  <div class="form-group">
-                      <label for="date">Date*</label>
-                      <input
-                          type="date"
-                          id="date"
-                          v-model="formData.date"
-                          :max="maxDate"
-                          required
-                      />
-                  </div>
-              </div>
+        <!-- Amount & Date -->
+        <div class="form-row">
+          <div class="form-group">
+            <label for="amount">Amount*</label>
+            <input type="text" id="amount" v-model="formData.amount" required />
+          </div>
+          <div class="form-group">
+            <label for="date">Date*</label>
+            <input type="date" id="date" v-model="formData.date" :max="maxDate" required />
+          </div>
+        </div>
 
-              <!-- Category & Highlights -->
-              <div class="form-row">
-                  <div class="form-group">
-                      <label for="category">Category*</label>
-                      <select id="category" v-model="formData.category" required>
-                          <option value="" disabled></option>
-                          <option value="Food">Food</option>
-                          <option value="Travel">Travel</option>
-                          <option value="Shopping">Shopping</option>
-                          <option value="Others">Others</option>
-                      </select>
-                  </div>
-                  <div class="form-group">
-                      <label for="highlights">Send Highlights to:</label>
-                      <input
-                          type="text"
-                          id="highlights"
-                          v-model="formData.highlights"
-                          placeholder="Optional"
-                      />
-                  </div>
-              </div>
+        <!-- Category & Highlights -->
+        <div class="form-row">
+          <div class="form-group">
+            <label for="category">Category*</label>
+            <select id="category" v-model="formData.category" required>
+              <option value="" disabled></option>
+              <option value="Food">Food</option>
+              <option value="Travel">Travel</option>
+              <option value="Shopping">Shopping</option>
+              <option value="Others">Others</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="highlights">Send Highlights to:</label>
+            <input type="text" id="highlights" v-model="formData.highlights" placeholder="Optional" />
+          </div>
+        </div>
 
-              <!-- Buttons -->
-              <div class="button-group">
-                  <button type="submit" class="add-expense">Add</button>
-                  <button type="button" @click="closeModal" class="close-button">
-                      Cancel
-                  </button>
-              </div>
-          </form>
-      </div>
+        <!-- Buttons -->
+        <div class="button-group">
+          <button type="submit" class="add-expense">Add</button>
+          <button type="button" @click="closeModal" class="close-button">
+            Cancel
+          </button>
+        </div>
+      </form>
+    </div>
   </div>
 </template>
 
-<script setup>
-import { ref, computed, onMounted, watch } from "vue";
+<script>
+import { collection, getDocs, query, orderBy, deleteDoc, doc, addDoc, updateDoc } from "firebase/firestore";
+import { db, auth } from "@/firebase";
 import ExpenseCard from "./ExpenseCard.vue";
-import {
-  collection,
-  getDocs,
-  query,
-  orderBy,
-  deleteDoc,
-  doc,
-  addDoc,
-  updateDoc,
-} from "firebase/firestore";
-import { db } from "@/firebase";
-import { auth } from "@/firebase";
 
-const props = defineProps({
-  uid: {
+export default {
+  components: {
+    ExpenseCard
+  },
+  props: {
+    uid: {
       type: String,
       required: true,
+    },
   },
-});
-
-const loading = ref(false);
-const isUser = ref(props.uid == auth.currentUser.uid);
-const sortOption = ref("date-desc");
-const expenses = ref([]);
-const isModalOpen = ref(false);
-const formData = ref({
-  id: "",
-  title: "",
-  amount: "",
-  date: "",
-  category: "",
-  highlights: "",
-});
-const today = new Date().toISOString().split("T")[0];
-const maxDate = ref(today);
-
-// Group expenses by date (only when not sorting by amount)
-const groupedExpenses = computed(() => {
-  if (sortOption.value.includes("amount")) {
-    return;
-  };
-
-  return expenses.value.reduce((acc, expense) => {
-      const date = expense.Date.split("T")[0];
-      if (!acc[date]) {
-          acc[date] = [];
+  data() {
+    return {
+      loading: false,
+      isUser: this.uid === auth.currentUser.uid,
+      sortOption: "date-desc",
+      expenses: [], // All fetched expenses
+      paginatedExpenses: [], // Paginated expenses for current page
+      isModalOpen: false,
+      formData: {
+        id: "",
+        title: "",
+        amount: "",
+        date: "",
+        category: "",
+        highlights: "",
+      },
+      today: new Date().toISOString().split("T")[0],
+      maxDate: this.today,
+      itemsPerPage: 15, // Number of items per page
+      currentPage: 1, // Current page number
+    };
+  },
+  computed: {
+    groupedExpenses() {
+      if (this.sortOption.includes("amount")) {
+        return;
       }
-      acc[date].push(expense);
-      return acc;
-  }, {});
-});
-
-// Fetch expenses for the user specified by props.uid
-const fetchUserExpenses = async () => {
-  loading.value = true;
-  try {
-      const q = query(
-          collection(db, "Users", props.uid, "Expenses"),
+      return this.expenses.reduce((acc, expense) => {
+        const date = expense.Date.split("T")[0];
+        if (!acc[date]) {
+          acc[date] = [];
+        }
+        acc[date].push(expense);
+        return acc;
+      }, {});
+    },
+    totalPages() {
+      const totalItems = this.sortOption.includes("amount")
+        ? this.expenses.length
+        : Object.values(this.groupedExpenses).flat().length;
+      console.log("Total items:", totalItems);
+      return Math.ceil(totalItems / this.itemsPerPage);
+    },
+  },
+  watch: {
+    expenses: "updatePaginatedExpenses",
+    currentPage: "updatePaginatedExpenses",
+    sortOption: "sortExpenses",
+  },
+  methods: {
+    async fetchUserExpenses() {
+      this.loading = true;
+      this.currentPage = 1; // Reset to first page when fetching expenses
+      try {
+        const q = query(
+          collection(db, "Users", this.uid, "Expenses"),
           orderBy("Date", "desc")
-      );
-      const snapshot = await getDocs(q);
-      expenses.value = snapshot.docs.map((doc) => ({
+        );
+        const snapshot = await getDocs(q);
+        this.expenses = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
-      }));
-      sortExpenses();
-  } catch (error) {
-      console.error("Error fetching expenses:", error);
-  } finally {
-    loading.value = false;
-  }
-};
-
-const sortExpenses = () => {
-  switch (sortOption.value) {
-  case "date-asc":
-      expenses.value.sort((a, b) => new Date(a.Date) - new Date(b.Date));
-      break;
-  case "date-desc":
-      expenses.value.sort((a, b) => new Date(b.Date) - new Date(a.Date));
-      break;
-  case "amount-asc":
-      expenses.value.sort((a, b) => a.Amount - b.Amount);
-      console.log(expenses);
-      break;
-  case "amount-desc":
-      expenses.value.sort((a, b) => b.Amount - a.Amount);
-      console.log(expenses);
-      break;
-  default:
-      break;
-  }
-};
-
-const deleteExpense = async (expense) => {
-  if (!props.uid) return;
-  if (confirm(`Are you sure you want to delete "${expense.Title}"?`)) {
-      try {
-          await deleteDoc(doc(db, "Users", props.uid, "Expenses", expense.id));
-          expenses.value = expenses.value.filter((e) => e.id !== expense.id);
+        }));
+        console.log("Fetched Expenses:", this.expenses);
+        this.updatePaginatedExpenses(); // Make sure this is called
+        this.sortExpenses();
       } catch (error) {
-          console.error("Error deleting expense:", error);
+        console.error("Error fetching expenses:", error);
+      } finally {
+        this.loading = false;
       }
-  }
-};
+    },
 
-const openModalForEditing = (expense) => {
-  formData.value = {
-  id: expense.id || "",
-  title: expense.Title || "",
-  amount: expense.Amount || "",
-  date: expense.Date || "",
-  category: expense.Category || "",
-  highlights: expense.Highlights || "",
-  };
-  isModalOpen.value = true;
-};
+    sortExpenses() {
+      console.log("Sorting Expenses by:", this.sortOption);
+      switch (this.sortOption) {
+        case "date-asc":
+          this.expenses.sort((a, b) => new Date(a.Date) - new Date(b.Date));
+          break;
+        case "date-desc":
+          this.expenses.sort((a, b) => new Date(b.Date) - new Date(a.Date));
+          break;
+        case "amount-asc":
+          this.expenses.sort((a, b) => a.Amount - b.Amount);
+          break;
+        case "amount-desc":
+          this.expenses.sort((a, b) => b.Amount - a.Amount);
+          break;
+        default:
+          break;
+      }
+      this.currentPage = 1; // Reset to first page when sorting changes
+      this.updatePaginatedExpenses();
+    },
 
-const closeModal = () => {
-  isModalOpen.value = false;
-  resetForm();
-};
+    updatePaginatedExpenses() {
+      const start = (this.currentPage - 1) * this.itemsPerPage;
+      const end = start + this.itemsPerPage;
 
-const resetForm = () => {
-  formData.value = {
-      id: "",
-      title: "",
-      amount: "",
-      date: "",
-      category: "",
-      highlights: "",
-  };
-};
+      console.log("Slicing items from", start, "to", end); // Debug log to check slice range
 
-const validateForm = () => {
-  if (
-      !formData.value.title ||
-      !formData.value.amount ||
-      !formData.value.date ||
-      !formData.value.category
-  ) {
-      alert("Please fill in all required fields: Title, Amount, Date, and Category.");
-      return false;
-  }
-
-  const amt = parseFloat(formData.value.amount);
-  if (isNaN(amt) || amt <= 0) {
-      alert("Please enter a valid amount greater than 0.");
-      return false;
-  }
-  if (formData.value.date > maxDate.value) {
-      alert("You cannot log an expense for a future date.");
-      return false;
-  }
-  return true;
-};
-
-const saveExpense = async () => {
-  if (!props.uid) return;
-  if (!validateForm()) return;
-  const { id, title, amount, date, category, highlights } = formData.value;
-  try {
-      if (id) {
-          const expenseRef = doc(db, "Users", props.uid, "Expenses", id);
-          await updateDoc(expenseRef, {
-          Title: title,
-          Amount: amount,
-          Date: date,
-          Category: category,
-          Highlights: highlights ?? "",
-          createdAt: new Date(),
-          });
+      if (this.sortOption.includes("amount")) {
+        this.paginatedExpenses = this.expenses.slice(start, end); // Slice the sorted expenses based on currentPage
       } else {
-          await addDoc(collection(db, "Users", props.uid, "Expenses"), {
-          Title: title,
-          Amount: amount,
-          Date: date,
-          Category: category,
-          Highlights: highlights ?? "",
-          createdAt: new Date(),
-          });
+        const allGroupedExpenses = Object.values(this.groupedExpenses).flat();
+        this.paginatedExpenses = allGroupedExpenses.slice(start, end); // Slice the grouped expenses based on currentPage
       }
-      await fetchUserExpenses();
-      closeModal();
-  } catch (error) {
-      console.error("Error saving expense:", error);
-  }
+
+      console.log("Updated Paginated Expenses:", this.paginatedExpenses);
+    },
+
+    async deleteExpense(expense) {
+      if (!this.uid) return;
+      if (confirm(`Are you sure you want to delete "${expense.Title}"?`)) {
+        console.log("Deleting expense:", expense);
+        try {
+          await deleteDoc(doc(db, "Users", this.uid, "Expenses", expense.id));
+          this.expenses = this.expenses.filter((e) => e.id !== expense.id);
+
+          // Re-fetch expenses to refresh the list
+          await this.fetchUserExpenses(); // Ensure the expenses list is up to date.
+          console.log("Expense deleted. Updated Expenses:", this.expenses);
+        } catch (error) {
+          console.error("Error deleting expense:", error);
+        }
+      }
+    },
+
+    openModalForEditing(expense) {
+      this.formData = {
+        id: expense.id || "",
+        title: expense.Title || "",
+        amount: expense.Amount || "",
+        date: expense.Date || "",
+        category: expense.Category || "",
+        highlights: expense.Highlights || "",
+      };
+      this.isModalOpen = true;
+    },
+
+    closeModal() {
+      this.isModalOpen = false;
+      this.resetForm();
+    },
+
+    resetForm() {
+      this.formData = {
+        id: "",
+        title: "",
+        amount: "",
+        date: "",
+        category: "",
+        highlights: "",
+      };
+    },
+
+    validateForm() {
+      if (
+        !this.formData.title ||
+        !this.formData.amount ||
+        !this.formData.date ||
+        !this.formData.category
+      ) {
+        alert("Please fill in all required fields: Title, Amount, Date, and Category.");
+        return false;
+      }
+
+      const amt = parseFloat(this.formData.amount);
+      if (isNaN(amt) || amt <= 0) {
+        alert("Please enter a valid amount greater than 0.");
+        return false;
+      }
+      if (this.formData.date > this.maxDate) {
+        alert("You cannot log an expense for a future date.");
+        return false;
+      }
+      return true;
+    },
+
+    async saveExpense() {
+      if (!this.uid) return;
+      if (!this.validateForm()) return;
+
+      const { id, title, amount, date, category, highlights } = this.formData;
+      try {
+        console.log("Saving Expense:", { id, title, amount, date, category, highlights });
+        if (id) {
+          const expenseRef = doc(db, "Users", this.uid, "Expenses", id);
+          await updateDoc(expenseRef, {
+            Title: title,
+            Amount: amount,
+            Date: date,
+            Category: category,
+            Highlights: highlights ?? "",
+            createdAt: new Date(),
+          });
+        } else {
+          await addDoc(collection(db, "Users", this.uid, "Expenses"), {
+            Title: title,
+            Amount: amount,
+            Date: date,
+            Category: category,
+            Highlights: highlights ?? "",
+            createdAt: new Date(),
+          });
+        }
+        console.log("Expense saved successfully.");
+        await this.fetchUserExpenses();
+        this.closeModal();
+      } catch (error) {
+        console.error("Error saving expense:", error);
+      }
+    },
+
+    formatDate(date) {
+      return new Date(date).toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      });
+    },
+
+    changePage(newPage) {
+      if (newPage > 0 && newPage <= this.totalPages) {
+        this.currentPage = newPage;
+        this.updatePaginatedExpenses();
+        console.log("Changed to Page:", this.currentPage);
+      }
+    },
+  },
+  mounted() {
+    this.fetchUserExpenses();
+  },
 };
-
-const formatDate = (date) => {
-  return new Date(date).toLocaleDateString("en-GB", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-  });
-};
-
-onMounted(() => {
-  fetchUserExpenses();
-});
-
-watch(sortOption, () => {
-  sortExpenses();
-});
 </script>
+
 
 <style scoped>
 .loading {
@@ -453,5 +500,22 @@ textarea {
 
 .sort-options select {
   padding: 5px;
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.pagination button {
+  padding: 5px 10px;
+  margin: 0 5px;
+  background: #d8c49d;
+  color: black;
+  border: none;
+  cursor: pointer;
+  border-radius: 8px;
+
 }
 </style>
