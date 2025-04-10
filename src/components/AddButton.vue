@@ -162,14 +162,33 @@ export default {
       }
 
       try {
-        await addDoc(collection(db, "Users", user.uid, "Expenses"), {
+        // Prepare the data
+        const expenseData = {
           Title: this.formData.title,
           Amount: parseFloat(this.formData.amount),
           Date: this.formData.date,
           Category: this.formData.category,
           Highlights: this.formData.highlights || "None",
           createdAt: new Date(),
-        });
+        };
+
+        // Save to user’s Expenses
+        await addDoc(collection(db, "Users", user.uid, "Expenses"), expenseData);
+
+        // Optional: Send to group Highlights if a group is selected
+        if (this.formData.highlights && this.formData.highlights !== "None") {
+          const highlightData = {
+            Title: this.formData.title,
+            Amount: parseFloat(this.formData.amount),
+            Date: this.formData.date,
+            UserName: user.displayName || "Anonymous", // Add user name
+            UserId: user.uid,
+            createdAt: new Date(),
+          };
+
+          await addDoc(collection(db, "Groups", this.formData.highlights, "Highlights"), highlightData);
+          console.log("📣 Highlight sent to group:", this.formData.highlights);
+        }
 
         console.log("✅ Document successfully written!");
         this.$emit("refresh-data");
@@ -178,7 +197,7 @@ export default {
         console.error("❌ Error adding document: ", error);
         alert("Error saving your data. Please try again.");
       }
-    },
+    }
   },
 };
 </script>

@@ -1,20 +1,26 @@
 <template>
   <div v-if="group" class="family-details">
     <div class="group-header-box">
-      
-  <div class="left">
-    <h2>{{ group.name }}</h2>
-    <p class="subtext">{{ Object.values(memberDisplayNames).join(", ") }}</p>
-    <p class="group-id">Group ID: {{ group.inviteCode }}</p>
-  </div>
 
-  <div class="right">
-    <p class="total">Total: ${{ totalSpent.toFixed(2) }}</p>
-    <button class="leave-btn" @click="confirmLeaveGroup">Leave Family</button>
-  </div>
-</div>
+      <div class="left">
+        <h2>{{ group.name }}</h2>
+        <p class="subtext">{{ Object.values(memberDisplayNames).join(", ") }}</p>
+        <p class="group-id">Group ID: {{ group.inviteCode }}</p>
+      </div>
 
-<FamilyBarChart :members="memberSpendingData" v-if="memberSpendingData.length" />
+      <div class="right">
+        <p class="total">Total: ${{ totalSpent.toFixed(2) }}</p>
+        <button class="leave-btn" @click="confirmLeaveGroup">Leave Family</button>
+      </div>
+    </div>
+
+    <FamilyBarChart :members="memberSpendingData" v-if="memberSpendingData.length" />
+
+    <div>
+      <h2 id= "highlightTitle">Highlights: </h2>
+      <HighlightCard v-for="highlight in highlights" :key="highlight.id" :title="highlight.Title"
+        :amount="highlight.Amount" :userName="highlight.UserName" :date="highlight.Date" />
+    </div>
 
     <button class="back-btn" @click="$router.back()">← Back</button>
     <button class="leave-btn" @click="confirmLeaveGroup">Leave Group</button>
@@ -30,14 +36,16 @@ import { ref, onMounted, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { db, auth } from "@/firebase";
 import {
-  doc, getDoc, collection,
+  doc, getDoc, getDocs, collection,
   updateDoc, deleteDoc,
   arrayRemove, onSnapshot
 } from "firebase/firestore";
 import FamilyBarChart from "@/components/FamilyBarChart.vue";
+import HighlightCard from "@/components/HighlightCard.vue";
 
 export default {
   components: {
+    HighlightCard,
     FamilyBarChart
   },
   setup() {
@@ -45,6 +53,7 @@ export default {
     const router = useRouter();
     const groupId = route.params.id;
     const group = ref(null);
+    const highlights = ref([]);
     const memberDisplayNames = ref({});
     const memberSpendingData = ref([]);
     const totalSpent = computed(() => {
@@ -67,6 +76,13 @@ export default {
         }
       });
     };
+    async function fetchHighlights() {
+      const highlightsRef = collection(db, "Groups", groupId, "Highlights");
+      const snapshot = await getDocs(highlightsRef);
+      highlights.value = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+      console.log("Fetched Highlights:", highlights.value);
+    }
 
     const fetchMemberData = async (memberUIDs) => {
       console.log("👥fetching member data for:", memberUIDs);
@@ -191,14 +207,18 @@ export default {
       }
     };
 
-    onMounted(fetchGroupDetails);
+    onMounted(async () => {
+      await fetchGroupDetails();
+      await fetchHighlights();
+    });
 
     return {
       group,
       memberDisplayNames,
       memberSpendingData,
       confirmLeaveGroup,
-      totalSpent
+      totalSpent,
+      highlights
     };
   }
 };
@@ -211,7 +231,7 @@ export default {
   text-align: center;
   padding: 20px;
   margin-top: 1%;
-  background: #fff;
+  /* background: #fff; */
   border-radius: 10px;
   box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
 }
@@ -320,5 +340,8 @@ li {
 
 .group-header-box .leave-btn:hover {
   background-color: #dfaa63;
+}
+#highlightTitle {
+  text-align: left;
 }
 </style>
