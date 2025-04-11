@@ -117,280 +117,257 @@
   </div>
 </template>
 
-<script setup>
-import { ref, computed, onMounted, watch } from "vue";
+<script>
+import { collection, getDocs, query, orderBy, deleteDoc, doc, addDoc, updateDoc } from "firebase/firestore";
+import { db, auth } from "@/firebase";
 import ExpenseCard from "./ExpenseCard.vue";
-import {
-  collection,
-  getDocs,
-  query,
-  orderBy,
-  deleteDoc,
-  doc,
-  addDoc,
-  updateDoc,
-  limit,
-} from "firebase/firestore";
-import { db } from "@/firebase";
-import { auth } from "@/firebase";
 
-const props = defineProps({
-  uid: {
-    type: String,
-    required: true,
+export default {
+  components: {
+    ExpenseCard
   },
-});
+  props: {
+    uid: {
+      type: String,
+      required: true,
+    },
+  },
+  data() {
+    return {
+      loading: false,
+      isUser: this.uid === auth.currentUser.uid,
+      sortOption: "date-desc",
+      expenses: [], // All fetched expenses
+      paginatedExpenses: [], // Paginated expenses for current page
+      isModalOpen: false,
+      formData: {
+        id: "",
+        title: "",
+        amount: "",
+        date: "",
+        category: "",
+        highlights: "",
+      },
+      today: new Date().toISOString().split("T")[0],
+      maxDate: this.today,
+      itemsPerPage: 15, // Number of items per page
+      currentPage: 1, // Current page number
+    };
+  },
+  computed: {
+    groupedExpenses() {
+      if (this.sortOption.includes("amount")) {
+        return;
+      }
+      return this.expenses.reduce((acc, expense) => {
+        const date = expense.Date.split("T")[0];
+        if (!acc[date]) {
+          acc[date] = [];
+        }
+        acc[date].push(expense);
+        return acc;
+      }, {});
+    },
+    totalPages() {
+      const totalItems = this.sortOption.includes("amount")
+        ? this.expenses.length
+        : Object.values(this.groupedExpenses).flat().length;
+      console.log("Total items:", totalItems);
+      return Math.ceil(totalItems / this.itemsPerPage);
+    },
+  },
+  watch: {
+    expenses: "updatePaginatedExpenses",
+    currentPage: "updatePaginatedExpenses",
+    sortOption: "sortExpenses",
+  },
+  methods: {
+    async fetchUserExpenses() {
+      this.loading = true;
+      this.currentPage = 1; // Reset to first page when fetching expenses
+      try {
+        const q = query(
+          collection(db, "Users", this.uid, "Expenses"),
+          orderBy("Date", "desc")
+        );
+        const snapshot = await getDocs(q);
+        this.expenses = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        console.log("Fetched Expenses:", this.expenses);
+        this.updatePaginatedExpenses(); // Make sure this is called
+        this.sortExpenses();
+      } catch (error) {
+        console.error("Error fetching expenses:", error);
+      } finally {
+        this.loading = false;
+      }
+    },
 
-const loading = ref(false);
-const isUser = ref(props.uid === auth.currentUser.uid);
-const sortOption = ref("date-desc");
-const expenses = ref([]); // All fetched expenses
-const paginatedExpenses = ref([]); // Paginated expenses for current page
-const isModalOpen = ref(false);
-const formData = ref({
-  id: "",
-  title: "",
-  amount: "",
-  date: "",
-  category: "",
-  highlights: "",
-});
-const today = new Date().toISOString().split("T")[0];
-const maxDate = ref(today);
-const itemsPerPage = 15; // Number of items per page
-const currentPage = ref(1); // Current page number
+    sortExpenses() {
+      console.log("Sorting Expenses by:", this.sortOption);
+      switch (this.sortOption) {
+        case "date-asc":
+          this.expenses.sort((a, b) => new Date(a.Date) - new Date(b.Date));
+          break;
+        case "date-desc":
+          this.expenses.sort((a, b) => new Date(b.Date) - new Date(a.Date));
+          break;
+        case "amount-asc":
+          this.expenses.sort((a, b) => a.Amount - b.Amount);
+          break;
+        case "amount-desc":
+          this.expenses.sort((a, b) => b.Amount - a.Amount);
+          break;
+        default:
+          break;
+      }
+      this.currentPage = 1; // Reset to first page when sorting changes
+      this.updatePaginatedExpenses();
+    },
 
-// Group expenses by date (only when not sorting by amount)
-const groupedExpenses = computed(() => {
-  if (sortOption.value.includes("amount")) {
-    return;
-  }
+    updatePaginatedExpenses() {
+      const start = (this.currentPage - 1) * this.itemsPerPage;
+      const end = start + this.itemsPerPage;
 
-  return expenses.value.reduce((acc, expense) => {
-    const date = expense.Date.split("T")[0];
-    if (!acc[date]) {
-      acc[date] = [];
-    }
-    acc[date].push(expense);
-    return acc;
-  }, {});
-});
+      console.log("Slicing items from", start, "to", end); // Debug log to check slice range
 
-// Calculate total number of pages
-const totalPages = computed(() => {
-  const totalItems = sortOption.value.includes('amount') ? expenses.value.length : Object.values(groupedExpenses.value).flat().length;
-  console.log("Total items:", totalItems);
-  return Math.ceil(totalItems / itemsPerPage);
-});
+      if (this.sortOption.includes("amount")) {
+        this.paginatedExpenses = this.expenses.slice(start, end); // Slice the sorted expenses based on currentPage
+      } else {
+        const allGroupedExpenses = Object.values(this.groupedExpenses).flat();
+        this.paginatedExpenses = allGroupedExpenses.slice(start, end); // Slice the grouped expenses based on currentPage
+      }
 
+      console.log("Updated Paginated Expenses:", this.paginatedExpenses);
+    },
 
-// Update paginated expenses whenever currentPage or expenses change
-watch([expenses, currentPage], () => {
-  console.log("Expenses:", expenses.value);
-  console.log("Current Page:", currentPage.value);
+    async deleteExpense(expense) {
+      if (!this.uid) return;
+      if (confirm(`Are you sure you want to delete "${expense.Title}"?`)) {
+        console.log("Deleting expense:", expense);
+        try {
+          await deleteDoc(doc(db, "Users", this.uid, "Expenses", expense.id));
+          this.expenses = this.expenses.filter((e) => e.id !== expense.id);
 
-  updatePaginatedExpenses();
-});
+          // Re-fetch expenses to refresh the list
+          await this.fetchUserExpenses(); // Ensure the expenses list is up to date.
+          console.log("Expense deleted. Updated Expenses:", this.expenses);
+        } catch (error) {
+          console.error("Error deleting expense:", error);
+        }
+      }
+    },
 
-// Fetch expenses for the user specified by props.uid
-const fetchUserExpenses = async () => {
-  loading.value = true;
-  currentPage.value = 1; // Reset to first page when fetching expenses
-  try {
-    const q = query(
-      collection(db, "Users", props.uid, "Expenses"),
-      orderBy("Date", "desc")
-    );
-    const snapshot = await getDocs(q);
-    expenses.value = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-    console.log("Fetched Expenses:", expenses.value);
-    updatePaginatedExpenses();  // Make sure this is called
-    sortExpenses();
-  } catch (error) {
-    console.error("Error fetching expenses:", error);
-  } finally {
-    loading.value = false;
-  }
-};
+    openModalForEditing(expense) {
+      this.formData = {
+        id: expense.id || "",
+        title: expense.Title || "",
+        amount: expense.Amount || "",
+        date: expense.Date || "",
+        category: expense.Category || "",
+        highlights: expense.Highlights || "",
+      };
+      this.isModalOpen = true;
+    },
 
+    closeModal() {
+      this.isModalOpen = false;
+      this.resetForm();
+    },
 
-const sortExpenses = () => {
-  console.log("Sorting Expenses by:", sortOption.value);
-  switch (sortOption.value) {
-    case "date-asc":
-      expenses.value.sort((a, b) => new Date(a.Date) - new Date(b.Date));
-      break;
-    case "date-desc":
-      expenses.value.sort((a, b) => new Date(b.Date) - new Date(a.Date));
-      break;
-    case "amount-asc":
-      expenses.value.sort((a, b) => a.Amount - b.Amount);
-      break;
-    case "amount-desc":
-      expenses.value.sort((a, b) => b.Amount - a.Amount);
-      break;
-    default:
-      break;
-  }
-  currentPage.value = 1; // Reset to first page when sorting changes
-  updatePaginatedExpenses();
-};
+    resetForm() {
+      this.formData = {
+        id: "",
+        title: "",
+        amount: "",
+        date: "",
+        category: "",
+        highlights: "",
+      };
+    },
 
-const updatePaginatedExpenses = () => {
-  const start = (currentPage.value - 1) * itemsPerPage;
-  const end = start + itemsPerPage;
+    validateForm() {
+      if (
+        !this.formData.title ||
+        !this.formData.amount ||
+        !this.formData.date ||
+        !this.formData.category
+      ) {
+        alert("Please fill in all required fields: Title, Amount, Date, and Category.");
+        return false;
+      }
 
-  console.log("Slicing items from", start, "to", end); // Debug log to check slice range
+      const amt = parseFloat(this.formData.amount);
+      if (isNaN(amt) || amt <= 0) {
+        alert("Please enter a valid amount greater than 0.");
+        return false;
+      }
+      if (this.formData.date > this.maxDate) {
+        alert("You cannot log an expense for a future date.");
+        return false;
+      }
+      return true;
+    },
 
-  if (sortOption.value.includes('amount')) {
-    paginatedExpenses.value = expenses.value.slice(start, end); // Slice the sorted expenses based on currentPage
-  } else {
-    const allGroupedExpenses = Object.values(groupedExpenses.value).flat();
-    paginatedExpenses.value = allGroupedExpenses.slice(start, end); // Slice the grouped expenses based on currentPage
-  }
+    async saveExpense() {
+      if (!this.uid) return;
+      if (!this.validateForm()) return;
 
-  console.log("Updated Paginated Expenses:", paginatedExpenses.value);
-};
+      const { id, title, amount, date, category, highlights } = this.formData;
+      try {
+        console.log("Saving Expense:", { id, title, amount, date, category, highlights });
+        if (id) {
+          const expenseRef = doc(db, "Users", this.uid, "Expenses", id);
+          await updateDoc(expenseRef, {
+            Title: title,
+            Amount: amount,
+            Date: date,
+            Category: category,
+            Highlights: highlights ?? "",
+            createdAt: new Date(),
+          });
+        } else {
+          await addDoc(collection(db, "Users", this.uid, "Expenses"), {
+            Title: title,
+            Amount: amount,
+            Date: date,
+            Category: category,
+            Highlights: highlights ?? "",
+            createdAt: new Date(),
+          });
+        }
+        console.log("Expense saved successfully.");
+        await this.fetchUserExpenses();
+        this.closeModal();
+      } catch (error) {
+        console.error("Error saving expense:", error);
+      }
+    },
 
-
-// Add console log before and after deleting an expense
-const deleteExpense = async (expense) => {
-  if (!props.uid) return;
-  if (confirm(`Are you sure you want to delete "${expense.Title}"?`)) {
-    console.log("Deleting expense:", expense);
-    try {
-      await deleteDoc(doc(db, "Users", props.uid, "Expenses", expense.id));
-      expenses.value = expenses.value.filter((e) => e.id !== expense.id);
-
-      // Re-fetch expenses to refresh the list
-      await fetchUserExpenses(); // Ensure the expenses list is up to date.
-      console.log("Expense deleted. Updated Expenses:", expenses.value);
-    } catch (error) {
-      console.error("Error deleting expense:", error);
-    }
-  }
-};
-
-const openModalForEditing = (expense) => {
-  formData.value = {
-    id: expense.id || "",
-    title: expense.Title || "",
-    amount: expense.Amount || "",
-    date: expense.Date || "",
-    category: expense.Category || "",
-    highlights: expense.Highlights || "",
-  };
-  isModalOpen.value = true;
-};
-
-const closeModal = () => {
-  isModalOpen.value = false;
-  resetForm();
-};
-
-const resetForm = () => {
-  formData.value = {
-    id: "",
-    title: "",
-    amount: "",
-    date: "",
-    category: "",
-    highlights: "",
-  };
-};
-
-const validateForm = () => {
-  if (
-    !formData.value.title ||
-    !formData.value.amount ||
-    !formData.value.date ||
-    !formData.value.category
-  ) {
-    alert("Please fill in all required fields: Title, Amount, Date, and Category.");
-    return false;
-  }
-
-  const amt = parseFloat(formData.value.amount);
-  if (isNaN(amt) || amt <= 0) {
-    alert("Please enter a valid amount greater than 0.");
-    return false;
-  }
-  if (formData.value.date > maxDate.value) {
-    alert("You cannot log an expense for a future date.");
-    return false;
-  }
-  return true;
-};
-
-const saveExpense = async () => {
-  if (!props.uid) return;
-  if (!validateForm()) return;
-
-  const { id, title, amount, date, category, highlights } = formData.value;
-  try {
-    console.log("Saving Expense:", { id, title, amount, date, category, highlights });
-    if (id) {
-      const expenseRef = doc(db, "Users", props.uid, "Expenses", id);
-      await updateDoc(expenseRef, {
-        Title: title,
-        Amount: amount,
-        Date: date,
-        Category: category,
-        Highlights: highlights ?? "",
-        createdAt: new Date(),
+    formatDate(date) {
+      return new Date(date).toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
       });
-    } else {
-      await addDoc(collection(db, "Users", props.uid, "Expenses"), {
-        Title: title,
-        Amount: amount,
-        Date: date,
-        Category: category,
-        Highlights: highlights ?? "",
-        createdAt: new Date(),
-      });
-    }
-    console.log("Expense saved successfully.");
-    await fetchUserExpenses();
-    closeModal();
-  } catch (error) {
-    console.error("Error saving expense:", error);
-  }
+    },
+
+    changePage(newPage) {
+      if (newPage > 0 && newPage <= this.totalPages) {
+        this.currentPage = newPage;
+        this.updatePaginatedExpenses();
+        console.log("Changed to Page:", this.currentPage);
+      }
+    },
+  },
+  mounted() {
+    this.fetchUserExpenses();
+  },
 };
-
-const formatDate = (date) => {
-  return new Date(date).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-};
-
-onMounted(() => {
-  fetchUserExpenses();
-});
-
-// Watch sorting option and update expenses accordingly
-watch(sortOption, () => {
-  sortExpenses();
-  console.log("Updated Sorted Expenses:", expenses.value);
-});
-
-// Function to change the current page
-const changePage = (newPage) => {
-  if (newPage > 0 && newPage <= totalPages.value) {
-    currentPage.value = newPage;
-    updatePaginatedExpenses();
-    console.log("Changed to Page:", currentPage.value);
-  }
-};
-
-// You can also log total pages and items per page if needed
-console.log("Items per Page:", itemsPerPage);
-console.log("Total Pages:", totalPages.value);
 </script>
+
 
 <style scoped>
 .loading {
