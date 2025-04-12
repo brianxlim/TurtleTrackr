@@ -101,10 +101,7 @@ const signOutUser = async () => {
 };
 
 import { getAuth, deleteUser } from "firebase/auth";
-import { doc, deleteDoc } from "firebase/firestore";
-import { db } from "@/firebase";
 
-import { getAuth, deleteUser } from "firebase/auth";
 import {
   collection, getDocs, deleteDoc,
   doc, updateDoc, arrayRemove
