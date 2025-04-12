@@ -9,8 +9,16 @@
       </div>
 
       <div class="right">
+        <div class="icon-leave-wrap">
+          <img
+            src="/images/inbox-icon.png"
+            alt="Inbox"
+            class="inbox-icon"
+            @click="toggleInbox"
+          />
+          <button class="leave-btn" @click="confirmLeaveGroup">Leave Family</button>
+        </div>
         <p class="total">Total: ${{ totalSpent.toFixed(2) }}</p>
-        <button class="leave-btn" @click="confirmLeaveGroup">Leave Family</button>
       </div>
     </div>
 
@@ -343,5 +351,23 @@ li {
 }
 #highlightTitle {
   text-align: left;
+}
+
+.icon-leave-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.inbox-icon {
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.inbox-icon:hover {
+  transform: scale(1.1);
 }
 </style>
