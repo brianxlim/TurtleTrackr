@@ -100,21 +100,64 @@ const signOutUser = async () => {
     await authStore.logUserOut(); 
 };
 
+import { getAuth, deleteUser } from "firebase/auth";
+import { doc, deleteDoc } from "firebase/firestore";
+import { db } from "@/firebase";
+
+import { getAuth, deleteUser } from "firebase/auth";
+import {
+  collection, getDocs, deleteDoc,
+  doc, updateDoc, arrayRemove
+} from "firebase/firestore";
+import { db } from "@/firebase";
+
 const deleteAccount = async () => {
-    // Get confirmation first before deleting
-    const confirmDelete = confirm("Are you sure you want to delete your account? All relevant data associated with your account will be deleted!");
-    if (confirmDelete) {       
-        try {
-            const deleted = await authStore.deleteUserAccount();
-            if (deleted) {
-                alert("User deleted! You will be logged out now.");
-                router.push("/");
-            }
-        } catch (error) {
-            alert("Unable to delete account now: " + error.message);
-        }
+  const confirmDelete = confirm("Are you sure you want to delete your account and all data?");
+  if (!confirmDelete) return;
+
+  const auth = getAuth();
+  const user = auth.currentUser;
+  const uid = user?.uid;
+
+  if (!uid) {
+    alert("No user found.");
+    return;
+  }
+
+  try {
+    // 1. Delete all subcollections
+    const deleteSubcollection = async (subName) => {
+      const subRef = collection(db, "Users", uid, subName);
+      const snap = await getDocs(subRef);
+      for (const docSnap of snap.docs) {
+        await deleteDoc(docSnap.ref);
+      }
+      console.log(`Deleted subcollection ${subName}`);
+    };
+
+    await deleteSubcollection("Expenses");
+    await deleteSubcollection("Goals");
+    await deleteSubcollection("groups"); // if you have this
+
+    // 2. Delete user document (after subcollections)
+    await deleteDoc(doc(db, "Users", uid));
+    console.log("Deleted main user document");
+
+    // 3. Delete Auth user
+    await deleteUser(user);
+    console.log("Deleted Firebase Auth user");
+
+    alert("Account fully deleted.");
+    router.push("/");
+  } catch (err) {
+    console.error("Deletion failed:", err);
+    if (err.code === "auth/requires-recent-login") {
+      alert("Please log in again before deleting your account.");
+    } else {
+      alert("Failed to delete account: " + err.message);
     }
-}
+  }
+};
 </script>
 
 <style scoped>
