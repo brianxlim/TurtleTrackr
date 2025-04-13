@@ -186,13 +186,15 @@ export default {
                 expensesSnapshot.forEach((doc) => {
                     const data = doc.data();
                     const amount = parseFloat(data.Amount) || 0;
-                    totalSpent += amount;
+                    const date = new Date(data.Date);
+                    const expenseMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                    const selectedMonth = `${this.selectedYear}-${String(this.selectedMonth).padStart(2, '0')}`;
 
-                    const category = categoryMap.hasOwnProperty(data.Category)
-                        ? data.Category
-                        : "Others";
-
-                    categoryMap[category] += amount;
+                    if (expenseMonth === selectedMonth) {
+                        totalSpent += amount;
+                        const category = categoryMap.hasOwnProperty(data.Category) ? data.Category : "Others";
+                        categoryMap[category] += amount;
+                    }
                 });
 
                 // Combine setAmount with real-time spent
@@ -285,6 +287,7 @@ export default {
             const expenseRef = collection(db, "Users", user.uid, "Expenses");
 
             onSnapshot(expenseRef, async (snapshot) => {
+            const currentMonth = `${this.selectedYear}-${String(this.selectedMonth).padStart(2, '0')}`;
             const categoryMap = {
                 Food: 0,
                 Travel: 0,
@@ -296,10 +299,13 @@ export default {
             snapshot.forEach(doc => {
                 const data = doc.data();
                 const amount = parseFloat(data.Amount || 0);
-                totalSpent += amount;
-
-                const cat = categoryMap.hasOwnProperty(data.Category) ? data.Category : "Others";
-                categoryMap[cat] += amount;
+                const date = new Date(data.Date);
+                const expenseMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+                if (expenseMonth === currentMonth) {
+                    totalSpent += amount;
+                    const cat = categoryMap.hasOwnProperty(data.Category) ? data.Category : "Others";
+                    categoryMap[cat] += amount;           
+                }
             });
 
             // Update UI in real-time
@@ -310,7 +316,6 @@ export default {
             }));
 
             // Also update Firestore "Goals" subcollection
-            const currentMonth = `${this.selectedYear}-${String(this.selectedMonth).padStart(2, '0')}`;
             const userGoalsRef = doc(db, "Users", user.uid, "Goals", currentMonth);
             const docSnapshot = await getDoc(userGoalsRef);
 
