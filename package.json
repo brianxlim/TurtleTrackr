@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@firebase/storage": "^0.13.7",
     "canvas-confetti": "^1.9.3",
     "chart.js": "^4.4.8",
     "firebase": "^11.4.0",

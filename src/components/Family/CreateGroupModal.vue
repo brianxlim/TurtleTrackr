@@ -9,23 +9,32 @@
             <h2>Create Group</h2>
             <input v-model="newGroupName" placeholder="Enter group name" class="input-field" />
 
-            <label class="color-label">Choose Group Color:</label>
-            <div class="color-swatch-container">
-                <div
-                    v-for="color in presetColors"
-                    :key="color"
-                    class="color-swatch"
-                    :style="{
-                    backgroundColor: color,
-                    border: selectedColor === color ? '0.1875rem solid #444' : '0.125rem solid transparent'
-                    }"
-                    @click="selectedColor = color"
-                ></div>
+            <!-- File upload input for group image -->
+            <div class="upload-container">
+                <label for="groupImage">Upload Group Image (optional):</label>
+                <input type="file" id="groupImage" @change="handleFileUpload" accept="image/*" />
+            </div>
+
+            <!-- Only show color swatches if no image is selected -->
+            <div v-if="!imageURL">
+                <label class="color-label">Or Choose Group Color:</label>
+                <div class="color-swatch-container">
+                    <div
+                        v-for="color in presetColors"
+                        :key="color"
+                        class="color-swatch"
+                        :style="{
+                            backgroundColor: color,
+                            border: selectedColor === color ? '0.1875rem solid #444' : '0.125rem solid transparent'
+                        }"
+                        @click="selectedColor = color"
+                    ></div>
+                </div>
             </div>
 
             <button @click="createGroup" class="btn submit-btn" :disabled="loading">
-            <span v-if="loading">Creating...</span>
-            <span v-else>Create</span>
+                <span v-if="loading">Creating...</span>
+                <span v-else>Create</span>
             </button>
         </div>
     </div>
@@ -33,8 +42,9 @@
 
 <script setup>
 import { ref } from 'vue';
-import { db, auth } from '@/firebase';
-import { addDoc, collection, doc, setDoc } from 'firebase/firestore';
+import { db, auth, storage } from '@/firebase';
+import { addDoc, collection, doc, setDoc, getDoc } from 'firebase/firestore';
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import confetti from 'canvas-confetti';
 
 const emit = defineEmits(['groupCreated', 'close']);
@@ -48,8 +58,28 @@ const presetColors = ref([
 ]);
 const loading = ref(false);
 
+// For image upload state
+const imageFile = ref(null);
+const imageURL = ref("");
+
 const generateGroupCode = () => {
     return Math.random().toString(36).substring(2, 10).toUpperCase();
+};
+
+const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    imageFile.value = file;
+
+    // Create a unique path for the file (e.g., using current timestamp and file name)
+    const storageReference = storageRef(storage, `groupImages/${Date.now()}_${file.name}`);
+    try {
+        const snapshot = await uploadBytes(storageReference, file);
+        imageURL.value = await getDownloadURL(snapshot.ref);
+    } catch (error) {
+        console.error("Error uploading image:", error);
+        alert("There was an error uploading the image. Please try again.");
+    }
 };
 
 const createGroup = async () => {
@@ -66,45 +96,49 @@ const createGroup = async () => {
 
     loading.value = true;
     const groupCode = generateGroupCode();
+    const groupImage = imageURL.value;
+
     const newGroup = {
         name: newGroupName.value,
-        image: "/images/default.png",
+        image: groupImage,
         members: [user.uid],
         totalSpent: 0,
         inviteCode: groupCode,
-        color: selectedColor.value || "#C0C0C0",
+        color: selectedColor.value,
         createdBy: user.uid,
         createdAt: new Date()
     };
 
     try {
-    // Create group in main groups collection.
-    const groupDocRef = await addDoc(collection(db, "Groups"), newGroup);
-    const groupId = groupDocRef.id;
+        // Create group in main Groups collection.
+        const groupDocRef = await addDoc(collection(db, "Groups"), newGroup);
+        const groupId = groupDocRef.id;
 
-    // Immediately close the modal.
-    emit("close");
+        // Close the modal immediately after creating the group.
+        emit("close");
 
-    // Add a reference to the group in the user's subcollection "Groups".
-    await setDoc(doc(db, "Users", user.uid, "Groups", groupId), {
-        name: newGroup.name,
-        inviteCode: newGroup.inviteCode,
-        joinedAt: new Date()
-    });
+        // Add a reference to the group in the user's subcollection "Groups".
+        await setDoc(doc(db, "Users", user.uid, "Groups", groupId), {
+            name: newGroup.name,
+            inviteCode: newGroup.inviteCode,
+            joinedAt: new Date()
+        });
 
-    confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.6 }
-    });
-    emit("groupCreated");
+        confetti({
+            particleCount: 100,
+            spread: 70,
+            origin: { y: 0.6 }
+        });
+        emit("groupCreated");
     } catch (err) {
-    console.error("Error creating group:", err);
-    alert("Error creating group. Please try again.");
+        console.error("Error creating group:", err);
+        alert("Error creating group. Please try again.");
     }
 
     newGroupName.value = "";
     selectedColor.value = "#C0C0C0";
+    imageFile.value = null;
+    imageURL.value = "";
     loading.value = false;
 };
 
@@ -114,6 +148,13 @@ const emitClose = () => {
 </script>
 
 <style scoped>
+.upload-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: center;
+}
+
 .modal {
     position: fixed;
     top: 0;
