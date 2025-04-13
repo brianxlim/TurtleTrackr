@@ -16,6 +16,7 @@
             class="inbox-icon"
             @click="toggleInbox"
           />
+          <button class="back-btn" @click="$router.back()">← Back</button>
           <button class="leave-btn" @click="confirmLeaveGroup">Leave Family</button>
         </div>
         <p class="total">Total: ${{ totalSpent.toFixed(2) }}</p>
@@ -29,9 +30,6 @@
       <HighlightCard v-for="highlight in highlights" :key="highlight.id" :title="highlight.Title"
         :amount="highlight.Amount" :userName="highlight.UserName" :date="highlight.Date" />
     </div>
-
-    <button class="back-btn" @click="$router.back()">← Back</button>
-    <button class="leave-btn" @click="confirmLeaveGroup">Leave Group</button>
   </div>
 
   <div v-else class="loading">
@@ -40,7 +38,7 @@
 </template>
 
 <script>
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, computed, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { db, auth } from "@/firebase";
 import {
@@ -59,7 +57,9 @@ export default {
   setup() {
     const route = useRoute();
     const router = useRouter();
+    const isUpdating = ref(false);
     const groupId = route.params.id;
+    const groupRef = doc(db, "Groups", groupId);
     const group = ref(null);
     const highlights = ref([]);
     const memberDisplayNames = ref({});
@@ -68,6 +68,27 @@ export default {
       return memberSpendingData.value.reduce((sum, member) => {
         return sum + Object.values(member.categories).reduce((a, b) => a + b, 0);
       }, 0);
+    });
+
+    watch(totalSpent, async (newTotal) => {
+      if (isUpdating.value) return; // Ignore changes while updating.
+      if (group.value) {
+        const currentTotal = Number(group.value.totalSpent) || 0;
+        if (Math.abs(currentTotal - newTotal) > 0.01) {
+          isUpdating.value = true;
+          try {
+            await updateDoc(doc(db, "Groups", groupId), { totalSpent: newTotal });
+            console.log("Updated group totalSpent:", newTotal);
+          } catch (e) {
+            console.error("Error updating totalSpent:", e);
+          } finally {
+            // Slight delay to ensure the snapshot has processed the update
+            setTimeout(() => {
+              isUpdating.value = false;
+            }, 400);
+          }
+        }
+      }
     });
 
     const fetchGroupDetails = async () => {
@@ -239,7 +260,6 @@ export default {
   text-align: center;
   padding: 20px;
   margin-top: 1%;
-  /* background: #fff; */
   border-radius: 10px;
   box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
 }
@@ -252,15 +272,13 @@ export default {
   cursor: pointer;
   border-radius: 5px;
   font-size: 16px;
-  margin-bottom: 20px;
-  margin-right: 10px;
+  margin: 1rem 0 0 0;
 }
 
 .leave-btn {
   background-color: #e57373;
   color: white;
   padding: 10px 20px;
-  margin-top: 20px;
   border: none;
   cursor: pointer;
   border-radius: 5px;

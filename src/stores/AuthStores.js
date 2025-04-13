@@ -119,7 +119,6 @@ export const useAuthStore = defineStore("authStore", () => {
     };
 
     // Delete user account
-    // TODO: Delete all of user's details in Firestore as well, such as his membership in groups, expenses, etc
     const deleteUserAccount = async () => {
         if (auth.currentUser) {
             try {

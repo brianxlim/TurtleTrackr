@@ -4,32 +4,31 @@
         @click="selectGroup"
         :style="{ borderColor: (group.color || '#ccc') + '88' }"
     >
-        <div
-            class="group-header"
-            :style="{
-            backgroundColor: group.color || '#e0e0e0',
-            color: getTextColor(group.color || '#e0e0e0')
-            }"
-        >
-            <h2>{{ group.name }}</h2>
-        </div>
-        <div class="group-body">
-            <img :src="group.image || '/images/default.png'" alt="Group Image" class="group-image" />
-            <p class="group-members">{{ group.members.length }} Members</p>
-            <p class="group-total">Total: ${{ group.totalSpent.toFixed(2) }}</p>
-            <p class="group-code">Invite Code: <span>{{ group.inviteCode }}</span></p>
-        </div>
+    <div class="group-header" :style="headerStyle">
+        <h2>{{ group.name }}</h2>
+    </div>
+    <div class="group-body">
+        <p class="group-members">{{ group.members.length }} Members</p>
+        <p class="group-total">
+            Total: ${{ group.totalSpent.toFixed(2) }}
+        </p>
+        <p class="group-code">
+            Invite Code: <span>{{ group.inviteCode }}</span>
+        </p>
+    </div>
     </div>
 </template>
 
 <script setup>
+import { computed } from "vue";
+
 const props = defineProps({
     group: {
-    type: Object,
-    required: true
-    }
+        type: Object,
+        required: true,
+    },
 });
-const emit = defineEmits(['select']);
+const emit = defineEmits(["select"]);
 
 const getTextColor = (bgColor) => {
     if (!bgColor) return "#000";
@@ -41,17 +40,38 @@ const getTextColor = (bgColor) => {
     return brightness > 160 ? "#000" : "#fff";
 };
 
+// Compute the header style based on whether an image is available.
+const headerStyle = computed(() => {
+  if (props.group.image && props.group.image.trim() !== "") {
+    return {
+      // Overlay a 30% opaque black gradient over the image.
+      backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), url(${props.group.image})`,
+      backgroundSize: "cover",
+      backgroundPosition: "center",
+      color: "#fff",
+      textShadow: "0px 0px 5px rgba(0, 0, 0, 0.8)"
+    };
+  } else {
+    const color = props.group.color || "#e0e0e0";
+    return {
+      backgroundColor: color,
+      color: getTextColor(color),
+      textShadow: "0px 0px 5px rgba(0, 0, 0, 0.8)"
+    };
+  }
+});
+
 const selectGroup = () => {
-    emit('select', props.group.id);
+    emit("select", props.group.id);
 };
 </script>
 
 <style scoped>
 .group-card {
-    width: 15.625rem; 
-    border-radius: 0.75rem; 
+    width: 15.625rem;
+    border-radius: 0.75rem;
     background: #fff;
-    border: 0.25rem solid #ccc; 
+    border: 0.25rem solid #ccc;
     box-shadow: 0 0.125rem 0.5rem rgba(0, 0, 0, 0.08);
     overflow: hidden;
     transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
@@ -64,23 +84,14 @@ const selectGroup = () => {
 }
 
 .group-header {
-    padding: 1rem; 
-    font-size: 1.25rem; 
+    padding: 1rem;
+    font-size: 1.25rem;
     font-weight: 700;
 }
 
 .group-body {
-    padding: 1.25rem; 
+    padding: 1.25rem;
     text-align: center;
-}
-
-.group-image {
-    width: 5.625rem; 
-    height: 5.625rem; 
-    object-fit: cover;
-    border-radius: 100%;
-    margin-bottom: 0.75rem; 
-    border: 0.125rem solid #ccc; 
 }
 
 .group-members,
@@ -91,4 +102,3 @@ const selectGroup = () => {
     color: #444;
 }
 </style>
-  
