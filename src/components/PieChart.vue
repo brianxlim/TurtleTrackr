@@ -3,11 +3,11 @@
     <div class="pie-chart">
       <canvas ref="chartCanvas"></canvas>
       <div class="center-text">
-        <img src="/turtles/pigTurtle.png" alt="Turtle" />
+        <img :src="turtleSrc" alt="Turtle" />
         <p>${{ totalAmount.toFixed(2) }}</p>
       </div>
     </div>
-    <h4 id="cashflowMonth">February's Cash Flow</h4>
+    <h4 id="cashflowMonth">{{currentMonthLabel}}</h4>
   </div>
 </template>
 
@@ -15,7 +15,7 @@
 import { Chart, ArcElement, Tooltip, Legend, DoughnutController } from "chart.js";
 
 export default {
-  props: ["totalAmount", "categories"],
+  props: ["totalAmount", "categories", "selectedTurtle"],
   mounted() {
     this.createChart();
   },
@@ -26,6 +26,17 @@ export default {
     categories() {
       this.updateChart();
     },
+  },
+  computed: {
+    currentMonthLabel() {
+      const now = new Date();
+      return now.toLocaleString('default', { month: 'long' }) + "'s Cash Flow";
+    },
+    turtleSrc() {
+      return this.selectedTurtle?.turtleFilename
+        ? `/turtles/${this.selectedTurtle.turtleFilename}`
+        : "/turtles/pigTurtle.png";
+    }
   },
   methods: {
     createChart() {

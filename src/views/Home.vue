@@ -1,7 +1,7 @@
 <template>
     <div class="dashboard">
         <div class="content">
-            <PieChart :totalAmount="totalAmount" :categories="categories" />
+            <PieChart :totalAmount="totalAmount" :categories="categories" :selectedTurtle="authStore.user?.selectedTurtle" />
             <Breakdown :categories="categories" />
         </div>
         <AddButton @refresh-data="loadExpenses" />
@@ -15,6 +15,7 @@ import NavBar from "@/components/NavBar/NavBar.vue";
 import AddButton from "@/components/AddButton.vue";
 import { db, auth } from '@/firebase.js';
 import { collection, addDoc, getDocs } from "firebase/firestore";
+import { useAuthStore } from "@/stores/AuthStores";
 
 export default {
     components: {
@@ -26,6 +27,7 @@ export default {
     data() {
         return {
             totalAmount: 0,
+            authStore: null,
             categories: [
                 { name: "Food", amount: 0, color: "#6F9BD1" },
                 { name: "Travel", amount: 0, color: "#B394C6" },
@@ -33,6 +35,14 @@ export default {
                 { name: "Others", amount: 0, color: "#96BE8C" },
             ],
         };
+    },
+    created() {
+        this.authStore = useAuthStore();
+    },
+    computed: {
+        selectedTurtle() {
+            return this.authStore?.user?.selectedTurtle || null;
+        }
     },
     async mounted() {
         console.log('trying to call loadexpeses()')
@@ -47,14 +57,23 @@ export default {
                     return;
                 }
                 console.log('trying to fetch expense history')
-                const userExpenseRef = collection(db, "Users", auth.currentUser.uid, "Expenses");
+                const userExpenseRef = collection(db, "Users", user.uid, "Expenses");
                 console.log('successfully fetched')
                 console.log('trying to read the expenses')
                 const ExpensesRecords = await getDocs(userExpenseRef);
                 console.log('successfully read')
                 let expenses = [];
+
+                const now = new Date();
+                const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+                
                 ExpensesRecords.forEach((doc) => {
-                    expenses.push({ id: doc.id, ...doc.data() });
+                    const data = doc.data();
+                    const date = new Date(data.Date);
+                    const expenseMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`; 
+                    if (expenseMonth === currentMonth) {
+                        expenses.push({ id: doc.id, ...data });
+                    }
                 });
                 console.log('successfully pushed')
                 this.processExpenses(expenses);
