@@ -19,8 +19,6 @@ export const useFamilyStore = defineStore("familyStore", () => {
   const isListening = ref(false);
   const initialLoadComplete = ref(false);
 
-  // This method sets up listeners for both the user's Groups subcollection
-  // and the main Groups collection where the user is a member
   const listenToUserGroups = async () => {
     const user = auth.currentUser;
     if (!user) return;
@@ -28,7 +26,7 @@ export const useFamilyStore = defineStore("familyStore", () => {
     // Clean up any existing listeners first
     stopListening();
     
-    // First, listen to the user's Groups subcollection
+    // listen to the user's Groups subcollection
     const userGroupsRef = collection(db, "Users", user.uid, "Groups");
     userGroupsUnsubscribe = onSnapshot(userGroupsRef, async (snapshot) => {
       // Get the IDs of all groups the user is registered to
@@ -42,20 +40,16 @@ export const useFamilyStore = defineStore("familyStore", () => {
         if (groupDoc.exists()) {
           const groupData = groupDoc.data();
           
-          // Check if the user is actually still in the group's members array
-          if (groupData.members && groupData.members.includes(user.uid)) {
+          
+          // Check if the user is actually stilll in the group's members array
+          if (!groupData.members || groupData.members.includes(user.uid)) {
             fetchedGroups.push({ id: groupId, ...groupData });
           } else {
-            // If the user is no longer in the group members array, clean up the user's Groups subcollection
-            console.log(`User is not in group ${groupId} members array - cleaning up reference`);
-            try {
-              await deleteDoc(doc(db, "Users", user.uid, "Groups", groupId));
-            } catch (error) {
-              console.error("Error cleaning up group reference:", error);
-            }
+            // cleanup if user was removed
+            await deleteDoc(doc(db, "Users", user.uid, "Groups", groupId));
           }
         } else {
-          // If the group doesn't exist anymore, clean up the user's Groups subcollection
+          //if the group doesn't exist anymore, clean up the user's Groups subcollection
           console.log(`Group ${groupId} doesn't exist - cleaning up reference`);
           try {
             await deleteDoc(doc(db, "Users", user.uid, "Groups", groupId));
@@ -65,8 +59,7 @@ export const useFamilyStore = defineStore("familyStore", () => {
         }
       }
       
-      // Also listen to Groups collection where the user is a member
-      // This helps us catch any groups where the user might have been added directly
+   
       const groupsRef = collection(db, "Groups");
       const groupsQuery = query(groupsRef, where("members", "array-contains", user.uid));
       

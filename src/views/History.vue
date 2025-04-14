@@ -10,7 +10,7 @@ import { computed } from "vue";
 import ExpenseList from "@/components/ExpenseList.vue";
 import { auth } from "@/firebase";
 
-// ✅ Define props
+
 const props = defineProps({
   uid: {
     type: String,
@@ -18,7 +18,6 @@ const props = defineProps({
   }
 });
 
-// ✅ Use passed prop OR fallback to current user
 const uidToFetch = computed(() => props.uid || auth.currentUser?.uid);
 </script>
 
