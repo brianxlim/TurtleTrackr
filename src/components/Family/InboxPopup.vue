@@ -1,47 +1,76 @@
 <template>
     <div class="inbox-popup">
-      <div class="popup-header">
-        <h2>Inbox</h2>
-        <span class="close-btn" @click="$emit('close')">×</span>
+      <div class="inbox-header">
+        <h3>Inbox</h3>
+        <button @click="$emit('close')">×</button>
       </div>
-  
-      <div class="popup-body">
-        <template v-if="messages.length">
-          <div v-for="(msg, index) in messages" :key="index" class="message-card">
-            <div class="message-content">
-              <div class="top-row">
-                <span class="username">{{ msg.user }}</span>
-                <span class="timestamp">{{ msg.timestamp || 'Just now' }}</span>
-              </div>
-              <p class="message-text">
-                <template v-if="msg.type === 'limit-exceeded'">
-                  <span class="keyword">Exceeded</span> {{ msg.category.toLowerCase() }} limit of
-                  <strong>${{ msg.limit }}</strong> for {{ msg.monthText }}.
-                </template>
-                <template v-else-if="msg.type === 'limit-updated'">
-                  {{ msg.user }} has changed {{ msg.category }} limit from
-                  <strong>${{ msg.originalLimit }}</strong> to
-                  <strong>${{ msg.newLimit }}</strong> for {{ msg.monthText }}.
-                </template>
-              </p>
-            </div>
+      
+      <div class="messages-container">
+        <div v-if="messages.length === 0" class="empty-inbox">
+          No messages
+        </div>
+        
+        <div 
+          v-for="(message, index) in messages" 
+          :key="index"
+          class="message"
+        >
+          <div class="message-header">
+            <span class="user">{{ message.user }}</span>
+            <span class="date">{{ formatTimestamp(message.timestamp) }}</span>
           </div>
-        </template>
-  
-        <template v-else>
-          <p class="no-alerts">No spending alerts yet 🎉</p>
-        </template>
+          
+          <div class="message-content">
+            <!-- Different message types -->
+            <template v-if="message.type === 'limit-set'">
+              Set a budget limit of ${{ message.limit }} for {{ message.category }} in {{ message.monthText }}
+            </template>
+            
+            <template v-else-if="message.type === 'limit-updated'">
+              Updated {{ message.category }} budget from ${{ message.originalLimit }} to ${{ message.newLimit }}
+            </template>
+            
+            <template v-else-if="message.type === 'limit-exceeded'">
+              <span class="warning">Exceeded</span> food limit of ${{ message.limit }} for {{ message.monthText }}.
+            </template>
+            
+            <!-- Fallback for any other message type -->
+            <template v-else>
+              {{ message.type }} alert for {{ message.category }}
+            </template>
+          </div>
+        </div>
       </div>
     </div>
   </template>
   
-  <script setup>
-  defineProps({
-    messages: {
-      type: Array,
-      default: () => [],
+  <script>
+  export default {
+    props: {
+      messages: {
+        type: Array,
+        required: true
+      }
     },
-  });
+    methods: {
+      formatTimestamp(timestamp) {
+        // If timestamp is missing, return empty string
+        if (!timestamp) return 'Unknown time';
+        
+        const date = new Date(timestamp);
+        // Check if date is valid
+        if (isNaN(date.getTime())) return 'Invalid date';
+        
+        // Format as "Apr 14, 2:30 PM"
+        return date.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      }
+    }
+  }
   </script>
   
   <style scoped>
@@ -50,80 +79,81 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
+    width: 80%;
+    max-width: 500px;
+    max-height: 80vh;
     background-color: var(--color-secondary-dark);
-    padding: 1.5rem;
     border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-    width: 480px;
-    max-width: 95%;
-    z-index: 999;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    z-index: 1000;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
   }
   
-  .popup-header {
+  .inbox-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 1.6rem;
-    font-weight: bold;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 0.5rem;
-    margin-bottom: 1rem;
+    padding: 15px 20px;
+    background-color: var(--color-secondary-dark);
+    border-bottom: 1px solid #e0e0e0;
   }
   
-  .close-btn {
-    font-size: 1.2rem;
+  .inbox-header h3 {
+    margin: 0;
+    font-size: 20px;
+  }
+  
+  .inbox-header button {
+    background: none;
+    border: none;
+    font-size: 24px;
     cursor: pointer;
+    padding: 0 5px;
   }
   
-  .popup-body {
-    max-height: 400px;
+  .messages-container {
+    padding: 15px;
     overflow-y: auto;
-  }
-  
-  .message-card {
-    background-color: #f9f9f9;
-    border-radius: 10px;
-    padding: 1rem;
-    margin-bottom: 1rem;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
-  }
-  
-  .message-content {
     flex: 1;
   }
   
-  .top-row {
+  .empty-inbox {
+    text-align: center;
+    color: #888;
+    padding: 20px;
+  }
+  
+  .message {
+    padding: 12px 15px;
+    margin-bottom: 12px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    border-left: 3px solid #ddd;
+  }
+  
+  .message-header {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 0.3rem;
+    margin-bottom: 6px;
   }
   
-  .username {
-    font-weight: 600;
-    font-size: 0.95rem;
+  .user {
+    font-weight: bold;
   }
   
-  .timestamp {
-    font-size: 0.85rem;
+  .date {
     color: #888;
+    font-size: 0.9em;
   }
   
-  .message-text {
-    font-size: 0.95rem;
-    line-height: 1.4;
+  .message-content {
     color: #333;
   }
   
-  .keyword {
-    color: #d9534f;
-    font-weight: 600;
-  }
-  
-  .no-alerts {
-    text-align: center;
-    font-size: 1rem;
-    color: #666;
-    padding: 2rem 0;
+  .warning {
+    color: #e53935;
+    font-weight: bold;
   }
   </style>
-  

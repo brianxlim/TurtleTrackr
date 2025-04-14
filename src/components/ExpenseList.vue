@@ -1,8 +1,9 @@
 <template>
   <div class="expense-list">
+    
     <div class="sort-options">
-      <label for="sortBy">Sort by:</label>
-      <select v-model="sortOption" @change="sortExpenses">
+      <label for="sortBy">Sort By:</label>
+      <select v-model="sortOption" @change="sortExpenses" class="sort-select">
         <option value="date-desc">Date (Newest to Oldest)</option>
         <option value="date-asc">Date (Oldest to Newest)</option>
         <option value="amount-desc">Amount (Highest to Lowest)</option>
@@ -19,41 +20,34 @@
       <span v-if="isUser">Start adding your expenses now!</span>
       <span v-else>This user does not have any expenses.</span>
     </div>
-    <!-- <div v-else>
-          
-          <div v-if="sortOption.includes('amount')">
-              <ExpenseCard
-                  v-for="expense in expenses"
-                  :key="expense.id"
-                  :expense="expense"
-                  @delete-expense="deleteExpense"
-                  @edit-expense="openModalForEditing"
-              />
-          </div>
-          
-          <div
-              v-else
-              v-for="(group, date) in groupedExpenses"
-              :key="date"
-              class="date-group"
-          >
-              <h2 class="date-header">{{ formatDate(date) }}</h2>
-              <ExpenseCard
-                  v-for="expense in group"
-                  :key="expense.id"
-                  :expense="expense"
-                  @delete-expense="deleteExpense"
-                  @edit-expense="openModalForEditing"
-              />
-          </div> -->
+    
     <div v-else>
+      <!-- When sorting by amount, show flat list -->
       <div v-if="sortOption.includes('amount')">
-        <ExpenseCard v-for="expense in paginatedExpenses" :key="expense.id" :expense="expense"
-          @delete-expense="deleteExpense" @edit-expense="openModalForEditing" />
+        <ExpenseCard 
+          v-for="expense in paginatedExpenses" 
+          :key="expense.id" 
+          :expense="expense"
+          @delete-expense="deleteExpense" 
+          @edit-expense="openModalForEditing" 
+        />
       </div>
+      
+      <!-- When sorting by date, show with daily grouping -->
       <div v-else>
-        <ExpenseCard v-for="expense in paginatedExpenses" :key="expense.id" :expense="expense"
-          @delete-expense="deleteExpense" @edit-expense="openModalForEditing" />
+        <div v-for="(dateGroup, date) in paginatedDailyGroupedExpenses" :key="date" class="date-group">
+          <div class="date-header">{{ formatDateHeader(date) }}</div>
+          
+          <div class="expense-cards">
+            <ExpenseCard
+              v-for="expense in dateGroup"
+              :key="expense.id"
+              :expense="expense"
+              @delete-expense="deleteExpense"
+              @edit-expense="openModalForEditing"
+            />
+          </div>
+        </div>
       </div>
     </div>
 
@@ -155,10 +149,8 @@ export default {
     };
   },
   computed: {
-    groupedExpenses() {
-      if (this.sortOption.includes("amount")) {
-        return;
-      }
+    // Group expenses by date
+    dailyGroupedExpenses() {
       return this.expenses.reduce((acc, expense) => {
         const date = expense.Date.split("T")[0];
         if (!acc[date]) {
@@ -168,12 +160,63 @@ export default {
         return acc;
       }, {});
     },
+    
+    // Paginated daily grouped expenses
+    paginatedDailyGroupedExpenses() {
+      // Create an object to hold paginated groups
+      const result = {};
+      
+      // Get dates in order of current sort option
+      let dates = Object.keys(this.dailyGroupedExpenses);
+      if (this.sortOption === 'date-desc') {
+        dates.sort((a, b) => b.localeCompare(a));
+      } else {
+        dates.sort((a, b) => a.localeCompare(b));
+      }
+      
+      let itemsToSkip = (this.currentPage - 1) * this.itemsPerPage;
+      let itemsToTake = this.itemsPerPage;
+      let itemsAdded = 0;
+      
+      // Process each date
+      for (const date of dates) {
+        if (itemsToTake <= 0) break;
+        
+        const expenses = this.dailyGroupedExpenses[date];
+        
+        // Skip expenses if needed for pagination
+        if (itemsToSkip >= expenses.length) {
+          itemsToSkip -= expenses.length;
+          continue;
+        }
+        
+        // Add partial or complete date group
+        if (itemsToSkip > 0) {
+          // Take a slice of the expenses
+          result[date] = expenses.slice(itemsToSkip);
+          itemsAdded += (expenses.length - itemsToSkip);
+          itemsToTake -= (expenses.length - itemsToSkip);
+          itemsToSkip = 0;
+        } else {
+          // Take all expenses for this date or what's left for the page
+          const toTake = Math.min(expenses.length, itemsToTake);
+          result[date] = expenses.slice(0, toTake);
+          itemsAdded += toTake;
+          itemsToTake -= toTake;
+        }
+      }
+      
+      return result;
+    },
+    
     totalPages() {
-      const totalItems = this.sortOption.includes("amount")
-        ? this.expenses.length
-        : Object.values(this.groupedExpenses).flat().length;
-      console.log("Total items:", totalItems);
-      return Math.ceil(totalItems / this.itemsPerPage);
+      if (this.sortOption.includes('amount')) {
+        return Math.ceil(this.expenses.length / this.itemsPerPage);
+      } else {
+        // Count total expenses across all groups
+        const totalItems = this.expenses.length;
+        return Math.ceil(totalItems / this.itemsPerPage);
+      }
     },
   },
   watch: {
@@ -196,7 +239,7 @@ export default {
           ...doc.data(),
         }));
         console.log("Fetched Expenses:", this.expenses);
-        this.updatePaginatedExpenses(); // Make sure this is called
+        this.updatePaginatedExpenses();
         this.sortExpenses();
       } catch (error) {
         console.error("Error fetching expenses:", error);
@@ -215,10 +258,10 @@ export default {
           this.expenses.sort((a, b) => new Date(b.Date) - new Date(a.Date));
           break;
         case "amount-asc":
-          this.expenses.sort((a, b) => a.Amount - b.Amount);
+          this.expenses.sort((a, b) => parseFloat(a.Amount) - parseFloat(b.Amount));
           break;
         case "amount-desc":
-          this.expenses.sort((a, b) => b.Amount - a.Amount);
+          this.expenses.sort((a, b) => parseFloat(b.Amount) - parseFloat(a.Amount));
           break;
         default:
           break;
@@ -228,19 +271,12 @@ export default {
     },
 
     updatePaginatedExpenses() {
-      const start = (this.currentPage - 1) * this.itemsPerPage;
-      const end = start + this.itemsPerPage;
-
-      console.log("Slicing items from", start, "to", end); // Debug log to check slice range
-
       if (this.sortOption.includes("amount")) {
-        this.paginatedExpenses = this.expenses.slice(start, end); // Slice the sorted expenses based on currentPage
-      } else {
-        const allGroupedExpenses = Object.values(this.groupedExpenses).flat();
-        this.paginatedExpenses = allGroupedExpenses.slice(start, end); // Slice the grouped expenses based on currentPage
+        const start = (this.currentPage - 1) * this.itemsPerPage;
+        const end = start + this.itemsPerPage;
+        this.paginatedExpenses = this.expenses.slice(start, end);
       }
-
-      console.log("Updated Paginated Expenses:", this.paginatedExpenses);
+      // For date grouping, we use the computed paginatedDailyGroupedExpenses
     },
 
     async deleteExpense(expense) {
@@ -252,8 +288,7 @@ export default {
           this.expenses = this.expenses.filter((e) => e.id !== expense.id);
 
           // Re-fetch expenses to refresh the list
-          await this.fetchUserExpenses(); // Ensure the expenses list is up to date.
-          console.log("Expense deleted. Updated Expenses:", this.expenses);
+          await this.fetchUserExpenses();
         } catch (error) {
           console.error("Error deleting expense:", error);
         }
@@ -265,7 +300,7 @@ export default {
         id: expense.id || "",
         title: expense.Title || "",
         amount: expense.Amount || "",
-        date: expense.Date || "",
+        date: expense.Date ? expense.Date.split("T")[0] : "",
         category: expense.Category || "",
         highlights: expense.Highlights || "",
       };
@@ -322,7 +357,7 @@ export default {
           const expenseRef = doc(db, "Users", this.uid, "Expenses", id);
           await updateDoc(expenseRef, {
             Title: title,
-            Amount: amount,
+            Amount: parseFloat(amount),
             Date: date,
             Category: category,
             Highlights: highlights ?? "",
@@ -331,7 +366,7 @@ export default {
         } else {
           await addDoc(collection(db, "Users", this.uid, "Expenses"), {
             Title: title,
-            Amount: amount,
+            Amount: parseFloat(amount),
             Date: date,
             Category: category,
             Highlights: highlights ?? "",
@@ -346,11 +381,13 @@ export default {
       }
     },
 
-    formatDate(date) {
-      return new Date(date).toLocaleDateString("en-GB", {
+    formatDateHeader(date) {
+      const dateObj = new Date(date);
+      return dateObj.toLocaleDateString("en-US", {
+        weekday: "long",
         day: "numeric",
         month: "long",
-        year: "numeric",
+        year: "numeric"
       });
     },
 
@@ -358,7 +395,6 @@ export default {
       if (newPage > 0 && newPage <= this.totalPages) {
         this.currentPage = newPage;
         this.updatePaginatedExpenses();
-        console.log("Changed to Page:", this.currentPage);
       }
     },
   },

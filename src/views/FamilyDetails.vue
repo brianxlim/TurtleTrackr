@@ -9,12 +9,7 @@
 
       <div class="right">
         <div class="icon-leave-wrap">
-          <img
-            src="/images/inbox-icon.png"
-            alt="Inbox"
-            class="inbox-icon"
-            @click="toggleInbox"
-          />
+          <img src="/images/inbox-icon.png" alt="Inbox" class="inbox-icon" @click="toggleInbox" />
           <button class="back-btn" @click="$router.back()">← Back</button>
           <button class="leave-btn" @click="confirmLeaveGroup">Leave Family</button>
         </div>
@@ -26,8 +21,19 @@
 
     <div>
       <h2 id="highlightTitle">Highlights: </h2>
-      <HighlightCard v-for="highlight in highlights" :key="highlight.id" :title="highlight.Title"
-        :amount="highlight.Amount" :userName="highlight.UserName" :date="highlight.Date" />
+      <HighlightCard 
+        v-for="highlight in highlights" 
+        :key="highlight.id" 
+        :title="highlight.Title"
+        :amount="highlight.Amount" 
+        :userName="highlight.UserName" 
+        :date="highlight.Date"
+        :likedBy="highlight.likedBy || []"
+        :dislikedBy="highlight.dislikedBy || []"
+        :groupId="groupId"
+        :postId="highlight.id"
+        @like="handleLike"
+        @dislike="handleDislike" />
     </div>
   </div>
 
@@ -43,13 +49,11 @@
 </template>
 
 <script>
-import { ref, onMounted, computed, watch } from "vue";
-import { useRoute, useRouter } from "vue-router";
 import { db, auth } from "@/firebase";
 import {
   doc, getDoc, getDocs, collection,
   updateDoc, deleteDoc, setDoc,
-  arrayRemove, onSnapshot
+  arrayUnion, arrayRemove, onSnapshot
 } from "firebase/firestore";
 import FamilyBarChart from "@/components/FamilyBarChart.vue";
 import HighlightCard from "@/components/HighlightCard.vue";
@@ -61,92 +65,119 @@ export default {
     FamilyBarChart,
     InboxPopup
   },
-  setup() {
-    const route = useRoute();
-    const router = useRouter();
-    const isUpdating = ref(false);
-    const groupId = route.params.id;
-    const group = ref(null);
-    const highlights = ref([]);
-    const memberDisplayNames = ref({});
-    const memberSpendingData = ref([]);
-    const totalSpent = computed(() => {
-      return memberSpendingData.value.reduce((sum, member) => {
+  data() {
+    return {
+      isUpdating: false,
+      groupId: this.$route.params.id,
+      group: null,
+      highlights: [],
+      memberDisplayNames: {},
+      memberSpendingData: [],
+      showInbox: false,
+      inboxMessages: [],
+      currentUser: null
+    };
+  },
+  computed: {
+    totalSpent() {
+      return this.memberSpendingData.reduce((sum, member) => {
         return sum + Object.values(member.categories).reduce((a, b) => a + b, 0);
       }, 0);
-    });
-
-    const showInbox = ref(false);
-    const inboxMessages = ref([]);
-
-    const toggleInbox = async () => {
-      if (!group.value || !group.value.members || group.value.members.length === 0) {
+    }
+  },
+  watch: {
+    group(newVal) {
+      if (this.showInbox && newVal?.members?.length) {
+        this.fetchInboxAlerts();
+      }
+    },
+    totalSpent: {
+      async handler(newTotal) {
+        if (this.isUpdating) return;
+        if (this.group) {
+          const currentTotal = Number(this.group.totalSpent) || 0;
+          if (Math.abs(currentTotal - newTotal) > 0.01) {
+            this.isUpdating = true;
+            try {
+              await updateDoc(doc(db, "Groups", this.groupId), { totalSpent: newTotal });
+            } catch (e) {
+              console.error("Error updating totalSpent:", e);
+            } finally {
+              setTimeout(() => {
+                this.isUpdating = false;
+              }, 400);
+            }
+          }
+        }
+      }
+    }
+  },
+  methods: {
+    async toggleInbox() {
+      if (!this.group || !this.group.members || this.group.members.length === 0) {
         console.warn("Group or members not ready yet. Skipping inbox load.");
         return;
       }
 
-      showInbox.value = !showInbox.value;
-      if (showInbox.value) {
-        await fetchInboxAlerts();
+      this.showInbox = !this.showInbox;
+      if (this.showInbox) {
+        await this.fetchInboxAlerts();
       }
-    };
-
-    watch(group, (newVal) => {
-      if (showInbox.value && newVal?.members?.length) {
-        fetchInboxAlerts();
+    },
+    
+    async updateGroupTotal(newTotal) {
+      try {
+        await updateDoc(doc(db, "Groups", this.groupId), { totalSpent: newTotal });
+        console.log("Updated group totalSpent:", newTotal);
+      } catch (e) {
+        console.error("Error updating totalSpent:", e);
+      } finally {
+        setTimeout(() => {
+          this.isUpdating = false;
+        }, 400);
       }
-    });
+    },
 
-    watch(totalSpent, async (newTotal) => {
-      if (isUpdating.value) return;
-      if (group.value) {
-        const currentTotal = Number(group.value.totalSpent) || 0;
-        if (Math.abs(currentTotal - newTotal) > 0.01) {
-          isUpdating.value = true;
-          try {
-            await updateDoc(doc(db, "Groups", groupId), { totalSpent: newTotal });
-          } catch (e) {
-            console.error("Error updating totalSpent:", e);
-          } finally {
-            setTimeout(() => {
-              isUpdating.value = false;
-            }, 400);
-          }
-        }
-      }
-    });
+    async fetchGroupDetails() {
+      const groupRef = doc(db, "Groups", this.groupId);
 
-    const fetchGroupDetails = async () => {
-      const groupRef = doc(db, "Groups", groupId);
       onSnapshot(groupRef, (groupSnap) => {
         if (groupSnap.exists()) {
           const data = groupSnap.data();
-          group.value = data;
-          fetchMemberData(data.members);
+          this.group = data;
+          this.fetchMemberData(data.members);
         } else {
           console.error("Group not found.");
         }
       });
-    };
+    },
 
-    async function fetchHighlights() {
-      const highlightsRef = collection(db, "Groups", groupId, "Highlights");
-      const snapshot = await getDocs(highlightsRef);
-      highlights.value = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    }
+    async fetchHighlights() {
+      const highlightsRef = collection(db, "Groups", this.groupId, "Highlights");
+      // Use onSnapshot for real-time updates to highlights including likes/dislikes
+      onSnapshot(highlightsRef, (snapshot) => {
+        // Map and sort the highlights by date in descending order
+        this.highlights = snapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() }))
+          .sort((a, b) => new Date(b.Date) - new Date(a.Date)); // Sort by date (most recent first)
 
-    const fetchMemberData = async (memberUIDs) => {
+        console.log("Fetched and sorted Highlights:", this.highlights);
+      });
+    },
+
+    async fetchMemberData(memberUIDs) {
+      console.log("👥fetching member data for:", memberUIDs);
       const NameMap = {};
       const tempDataMap = {};
 
-      memberDisplayNames.value = {};
-      memberSpendingData.value = [];
+      this.memberDisplayNames = {};
+      this.memberSpendingData = [];
 
       const updateAllCharts = () => {
         const allReady = memberUIDs.every(uid => tempDataMap[uid]);
         if (allReady) {
           const updatedData = memberUIDs.map(uid => tempDataMap[uid]);
-          memberSpendingData.value = updatedData;
+          this.memberSpendingData = updatedData;
         }
       };
 
@@ -158,7 +189,7 @@ export default {
           const data = userDoc.data();
           displayName = data.displayName || displayName;
           NameMap[uid] = displayName;
-          memberDisplayNames.value = { ...NameMap };
+          this.memberDisplayNames = { ...NameMap };
         }
 
         const categoryMap = {
@@ -205,9 +236,89 @@ export default {
           updateAllCharts();
         });
       }
-    };
+    },
 
-    const confirmLeaveGroup = async () => {
+    async handleLike(postId) {
+      if (!auth.currentUser) {
+        alert("You must be logged in to like posts");
+        return;
+      }
+      
+      const userId = auth.currentUser.uid;
+      const highlightRef = doc(db, "Groups", this.groupId, "Highlights", postId);
+      
+      try {
+        const highlightDoc = await getDoc(highlightRef);
+        if (!highlightDoc.exists()) {
+          console.error("Highlight not found");
+          return;
+        }
+        
+        const highlightData = highlightDoc.data();
+        const likedBy = highlightData.likedBy || [];
+        const dislikedBy = highlightData.dislikedBy || [];
+        
+        // Check if user already liked
+        if (likedBy.includes(userId)) {
+          // User already liked, remove like
+          await updateDoc(highlightRef, {
+            likedBy: arrayRemove(userId)
+          });
+          console.log("Like removed");
+        } else {
+          // Add like and remove dislike if exists
+          await updateDoc(highlightRef, {
+            likedBy: arrayUnion(userId),
+            dislikedBy: dislikedBy.includes(userId) ? arrayRemove(userId) : dislikedBy
+          });
+          console.log("Like added");
+        }
+      } catch (error) {
+        console.error("Error handling like:", error);
+      }
+    },
+    
+    async handleDislike(postId) {
+      if (!auth.currentUser) {
+        alert("You must be logged in to dislike posts");
+        return;
+      }
+      
+      const userId = auth.currentUser.uid;
+      const highlightRef = doc(db, "Groups", this.groupId, "Highlights", postId);
+      
+      try {
+        const highlightDoc = await getDoc(highlightRef);
+        if (!highlightDoc.exists()) {
+          console.error("Highlight not found");
+          return;
+        }
+        
+        const highlightData = highlightDoc.data();
+        const likedBy = highlightData.likedBy || [];
+        const dislikedBy = highlightData.dislikedBy || [];
+        
+        // Check if user already disliked
+        if (dislikedBy.includes(userId)) {
+          // User already disliked, remove dislike
+          await updateDoc(highlightRef, {
+            dislikedBy: arrayRemove(userId)
+          });
+          console.log("Dislike removed");
+        } else {
+          // Add dislike and remove like if exists
+          await updateDoc(highlightRef, {
+            dislikedBy: arrayUnion(userId),
+            likedBy: likedBy.includes(userId) ? arrayRemove(userId) : likedBy
+          });
+          console.log("Dislike added");
+        }
+      } catch (error) {
+        console.error("Error handling dislike:", error);
+      }
+    },
+
+    async confirmLeaveGroup() {
       const confirmed = window.confirm("Are you sure you want to leave this group?");
       if (!confirmed) return;
 
@@ -217,15 +328,15 @@ export default {
         return;
       }
 
-      const groupRef = doc(db, "Groups", groupId);
-      const userGroupRef = doc(db, "Users", user.uid, "Groups", groupId);
+      const groupRef = doc(db, "Groups", this.groupId);
+      const userGroupRef = doc(db, "Users", user.uid, "Groups", this.groupId);
 
       try {
         await updateDoc(groupRef, {
           members: arrayRemove(user.uid)
         });
 
-        await deleteDoc(doc(db, "Users", user.uid, "groups", groupId));
+        await deleteDoc(doc(db, "Users", user.uid, "groups", this.groupId));
 
         const updatedGroupSnap = await getDoc(groupRef);
         if (updatedGroupSnap.exists() && (!updatedGroupSnap.data().members || updatedGroupSnap.data().members.length === 0)) {
@@ -233,87 +344,104 @@ export default {
         }
 
         alert("You have left the group.");
-        router.push("/family");
+        this.$router.push("/family");
       } catch (err) {
         console.error("Error leaving group:", err);
         alert("Failed to leave group.");
       }
-    };
+    },
 
-    const fetchInboxAlerts = async () => {
+    async fetchInboxAlerts() {
       const now = new Date();
       const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2,"0")}`;
       const monthText = now.toLocaleString("default", { month: "long", year: "numeric" });
 
-      inboxMessages.value = [];
+      this.inboxMessages = [];
 
-      for (const uid of group.value.members) {
-        const userDoc = await getDoc(doc(db, "Users", uid));
-        const userName = userDoc.exists() ? userDoc.data().displayName || "Unnamed User" : "Unknown";
-
-        const goalRef = doc(db, "Users", uid, "Goals", monthKey);
-        const goalSnap = await getDoc(goalRef);
-        if (!goalSnap.exists()) continue;
-
-        const goals = goalSnap.data();
-        if (!goals?.categories) continue;
-
-        const alertDocRef = doc(db, "Groups", groupId, "Alerts", `${uid}-${monthKey}`);
-        const alertDocSnap = await getDoc(alertDocRef);
-        const previousAlerts = alertDocSnap.exists() ? alertDocSnap.data().alerts || [] : [];
-
-        const newAlerts = [];
-
-        for (const cat of goals.categories) {
-          const prev = previousAlerts.find(a => a.category === cat.name);
-
-          if (prev && prev.type === "limit-set" && prev.amount !== cat.setAmount) {
-            inboxMessages.value.push({ user: userName, category: cat.name, type: "limit-updated", originalLimit: prev.amount, newLimit: cat.setAmount, monthText });
-            newAlerts.push({ type: "limit-set", category: cat.name, amount: cat.setAmount });
+      try {
+        // Fetch alerts from Firestore
+        const alertsRef = collection(db, "Groups", this.groupId, "Alerts");
+        const alertsSnap = await getDocs(alertsRef);
+        
+        const processedAlerts = [];
+        
+        alertsSnap.forEach(doc => {
+          const alertData = doc.data();
+          if (alertData.alerts && Array.isArray(alertData.alerts)) {
+            alertData.alerts.forEach(alert => {
+              // Create a properly formatted message object
+              processedAlerts.push({
+                id: `${doc.id}-${alert.category}-${alert.type}`,
+                user: alertData.userName || "Unknown User",
+                category: alert.category || "Unknown",
+                type: alert.type || "unknown",
+                limit: alert.amount,
+                originalLimit: alert.originalAmount,
+                newLimit: alert.amount,
+                monthText: alertData.month 
+                  ? new Date(`${alertData.month.split('-')[0]}-${alertData.month.split('-')[1]}-01`).toLocaleString("default", { month: "long", year: "numeric" })
+                  : monthText,
+                timestamp: alert.timestamp || Date.now(),
+                read: (alert.readBy || []).includes(auth.currentUser?.uid)
+              });
+            });
           }
+        });
+        
+        // Also process current data to detect new alerts
+        for (const uid of this.group.members) {
+          const userDoc = await getDoc(doc(db, "Users", uid));
+          const userName = userDoc.exists() ? userDoc.data().displayName || "Unnamed User" : "Unknown";
 
-          const alreadyExceeded = previousAlerts.find(a => a.type === "limit-exceeded" && a.category === cat.name);
-          if (!alreadyExceeded && cat.spent > cat.setAmount) {
-            inboxMessages.value.push({ user: userName, category: cat.name, type: "limit-exceeded", limit: cat.setAmount, monthText });
-            newAlerts.push({ type: "limit-exceeded", category: cat.name });
-          }
+          const goalRef = doc(db, "Users", uid, "Goals", monthKey);
+          const goalSnap = await getDoc(goalRef);
+          if (!goalSnap.exists()) continue;
 
-          if (!prev) {
-            newAlerts.push({ type: "limit-set", category: cat.name, amount: cat.setAmount });
+          const goals = goalSnap.data();
+          if (!goals?.categories) continue;
+
+          // Check each category for potential alerts
+          for (const cat of goals.categories) {
+            // Check for exceeded limits
+            if (cat.spent > cat.setAmount) {
+              // Add exceeded limit alert if not already in processedAlerts
+              const existingAlert = processedAlerts.find(
+                a => a.user === userName && a.category === cat.name && a.type === "limit-exceeded"
+              );
+              
+              if (!existingAlert) {
+                processedAlerts.push({
+                  id: `current-${uid}-${cat.name}-exceeded`,
+                  user: userName,
+                  category: cat.name,
+                  type: "limit-exceeded",
+                  limit: cat.setAmount,
+                  monthText,
+                  timestamp: Date.now()
+                });
+              }
+            }
+            
+            // Add other alert types as needed...
           }
         }
-
-        if (newAlerts.length > 0) {
-          await setDoc(alertDocRef, {
-            userId: uid,
-            userName,
-            month: monthKey,
-            alerts: newAlerts
-          }, { merge: true });
-        }
+        
+        // Sort by timestamp (newest first)
+        processedAlerts.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+        
+        this.inboxMessages = processedAlerts;
+        
+      } catch (error) {
+        console.error("Error fetching inbox alerts:", error);
       }
-    };
-
-    onMounted(async () => {
-      await fetchGroupDetails();
-      await fetchHighlights();
-    });
-
-    return {
-      group,
-      memberDisplayNames,
-      memberSpendingData,
-      confirmLeaveGroup,
-      totalSpent,
-      highlights,
-      showInbox,
-      inboxMessages,
-      toggleInbox
-    };
+    }
+  },
+  mounted() {
+    this.fetchGroupDetails();
+    this.fetchHighlights();
   }
 };
 </script>
-
 
 <style scoped>
 .family-details {
