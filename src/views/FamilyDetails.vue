@@ -10,7 +10,6 @@
       <div class="right">
         <div class="icon-leave-wrap">
           <img src="/images/inbox-icon.png" alt="Inbox" class="inbox-icon" @click="toggleInbox" />
-          <img src="/images/inbox-icon.png" alt="Inbox" class="inbox-icon" @click="toggleInbox" />
           <button class="back-btn" @click="$router.back()">← Back</button>
           <button class="leave-btn" @click="confirmLeaveGroup">Leave Family</button>
         </div>
@@ -87,7 +86,8 @@ export default {
       memberSpendingData: [],
       showInbox: false,
       inboxMessages: [],
-      currentUser: null
+      currentUser: null,
+      selectedMemberUid:null
     };
   },
   computed: {
@@ -97,11 +97,7 @@ export default {
       }, 0);
     }
   },
-    const selectedMemberUid = ref(null);
-    const goToMember = (uid) => {
-      console.log("📥 Received click for member uid:", uid);
-      selectedMemberUid.value = uid;
-    };
+  
 
 
 
@@ -139,11 +135,18 @@ export default {
         return;
       }
 
+
       this.showInbox = !this.showInbox;
       if (this.showInbox) {
         await this.fetchInboxAlerts();
       }
     },
+
+    goToMember(uid) {
+  console.log("📥 Received click for member uid:", uid);
+  this.selectedMemberUid = uid;
+},
+
     
     async updateGroupTotal(newTotal) {
       try {
@@ -236,7 +239,6 @@ export default {
             ...(tempDataMap[uid] || {}),
             uid,
             name: displayName,
-            categories: { ...categoryMap }
             categories: { ...categoryMap }
           };
 
@@ -468,8 +470,11 @@ export default {
     this.fetchHighlights();
   }
 
-  
 };
+
+
+
+
 </script>
 
 <style scoped>
