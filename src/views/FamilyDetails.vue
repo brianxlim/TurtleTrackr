@@ -358,50 +358,81 @@ export default {
 
       this.inboxMessages = [];
 
-      for (const uid of this.group.members) {
-        const userDoc = await getDoc(doc(db, "Users", uid));
-        const userName = userDoc.exists() ? userDoc.data().displayName || "Unnamed User" : "Unknown";
-
-        const goalRef = doc(db, "Users", uid, "Goals", monthKey);
-        const goalSnap = await getDoc(goalRef);
-        if (!goalSnap.exists()) continue;
-
-        const goals = goalSnap.data();
-        if (!goals?.categories) continue;
-
-        const alertDocRef = doc(db, "Groups", this.groupId, "Alerts", `${uid}-${monthKey}`);
-        const alertDocSnap = await getDoc(alertDocRef);
-        const previousAlerts = alertDocSnap.exists() ? alertDocSnap.data().alerts || [] : [];
-
-        const newAlerts = [];
-
-        for (const cat of goals.categories) {
-          const prev = previousAlerts.find(a => a.category === cat.name);
-
-          if (prev && prev.type === "limit-set" && prev.amount !== cat.setAmount) {
-            this.inboxMessages.push({ user: userName, category: cat.name, type: "limit-updated", originalLimit: prev.amount, newLimit: cat.setAmount, monthText });
-            newAlerts.push({ type: "limit-set", category: cat.name, amount: cat.setAmount });
+      try {
+        // Fetch alerts from Firestore
+        const alertsRef = collection(db, "Groups", this.groupId, "Alerts");
+        const alertsSnap = await getDocs(alertsRef);
+        
+        const processedAlerts = [];
+        
+        alertsSnap.forEach(doc => {
+          const alertData = doc.data();
+          if (alertData.alerts && Array.isArray(alertData.alerts)) {
+            alertData.alerts.forEach(alert => {
+              // Create a properly formatted message object
+              processedAlerts.push({
+                id: `${doc.id}-${alert.category}-${alert.type}`,
+                user: alertData.userName || "Unknown User",
+                category: alert.category || "Unknown",
+                type: alert.type || "unknown",
+                limit: alert.amount,
+                originalLimit: alert.originalAmount,
+                newLimit: alert.amount,
+                monthText: alertData.month 
+                  ? new Date(`${alertData.month.split('-')[0]}-${alertData.month.split('-')[1]}-01`).toLocaleString("default", { month: "long", year: "numeric" })
+                  : monthText,
+                timestamp: alert.timestamp || Date.now(),
+                read: (alert.readBy || []).includes(auth.currentUser?.uid)
+              });
+            });
           }
+        });
+        
+        // Also process current data to detect new alerts
+        for (const uid of this.group.members) {
+          const userDoc = await getDoc(doc(db, "Users", uid));
+          const userName = userDoc.exists() ? userDoc.data().displayName || "Unnamed User" : "Unknown";
 
-          const alreadyExceeded = previousAlerts.find(a => a.type === "limit-exceeded" && a.category === cat.name);
-          if (!alreadyExceeded && cat.spent > cat.setAmount) {
-            this.inboxMessages.push({ user: userName, category: cat.name, type: "limit-exceeded", limit: cat.setAmount, monthText });
-            newAlerts.push({ type: "limit-exceeded", category: cat.name });
-          }
+          const goalRef = doc(db, "Users", uid, "Goals", monthKey);
+          const goalSnap = await getDoc(goalRef);
+          if (!goalSnap.exists()) continue;
 
-          if (!prev) {
-            newAlerts.push({ type: "limit-set", category: cat.name, amount: cat.setAmount });
+          const goals = goalSnap.data();
+          if (!goals?.categories) continue;
+
+          // Check each category for potential alerts
+          for (const cat of goals.categories) {
+            // Check for exceeded limits
+            if (cat.spent > cat.setAmount) {
+              // Add exceeded limit alert if not already in processedAlerts
+              const existingAlert = processedAlerts.find(
+                a => a.user === userName && a.category === cat.name && a.type === "limit-exceeded"
+              );
+              
+              if (!existingAlert) {
+                processedAlerts.push({
+                  id: `current-${uid}-${cat.name}-exceeded`,
+                  user: userName,
+                  category: cat.name,
+                  type: "limit-exceeded",
+                  limit: cat.setAmount,
+                  monthText,
+                  timestamp: Date.now()
+                });
+              }
+            }
+            
+            // Add other alert types as needed...
           }
         }
-
-        if (newAlerts.length > 0) {
-          await setDoc(alertDocRef, {
-            userId: uid,
-            userName,
-            month: monthKey,
-            alerts: newAlerts
-          }, { merge: true });
-        }
+        
+        // Sort by timestamp (newest first)
+        processedAlerts.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+        
+        this.inboxMessages = processedAlerts;
+        
+      } catch (error) {
+        console.error("Error fetching inbox alerts:", error);
       }
     }
   },
