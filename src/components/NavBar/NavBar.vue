@@ -16,7 +16,8 @@
           <router-link to="/goals">Goals</router-link>
           <router-link to="/profile">Profile</router-link>
         </nav>
-        <nav v-else>
+        <!-- Hide auth buttons on landing page -->
+        <nav v-else v-if="$route.name !== 'AuthLanding'">
           <router-link :to="{ path: '/auth', query: { mode: 'login' } }">Log In</router-link>
           <router-link :to="{ path: '/auth', query: { mode: 'signup' } }">Sign Up</router-link>
         </nav>
@@ -41,7 +42,8 @@
           <router-link class="drawer-nav-link" to="/goals" @click="closeDrawer">Goals</router-link>
           <router-link class="drawer-nav-link" to="/profile" @click="closeDrawer">Profile</router-link>
         </nav>
-        <nav v-else class="drawer-nav">
+        <!-- Hide auth buttons on landing page -->
+        <nav v-else-if="$route.name !== 'AuthLanding'" class="drawer-nav">
           <router-link :to="{ path: '/auth', query: { mode: 'login' } }">Log In</router-link>
           <router-link :to="{ path: '/auth', query: { mode: 'signup' } }">Sign Up</router-link>
         </nav>
@@ -91,7 +93,6 @@ const closeDrawer = () => {
   visibleDrawer.value = false;
 };
 </script>
-
 
 <style scoped>
 .navbar {

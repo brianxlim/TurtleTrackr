@@ -19,20 +19,25 @@
 </template>
 
 <script>
-import { ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, onMounted } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 
 export default {
   setup() {
     const showCoin = ref(false);
     const router = useRouter();
+    const route = useRoute();
 
     const triggerSingleCoin = () => {
       showCoin.value = true;
 
       setTimeout(() => {
         showCoin.value = false;
-        router.push('/auth/main'); // new login/signup page
+        sessionStorage.setItem('hasSeenLanding', 'true');
+
+        // Redirect to the originally intended path if passed
+        const redirectTo = route.query.redirect || '/auth/main';
+        router.push(redirectTo);
       }, 1000);
     };
 
@@ -43,6 +48,7 @@ export default {
   }
 };
 </script>
+
 
 <style scoped>
 .landing-page {
