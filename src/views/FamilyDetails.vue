@@ -1,7 +1,6 @@
 <template>
   <div v-if="group" class="family-details">
     <div class="group-header-box">
-
       <div class="left">
         <h2>{{ group.name }}</h2>
         <p class="subtext">{{ Object.values(memberDisplayNames).join(", ") }}</p>
@@ -26,7 +25,7 @@
     <FamilyBarChart :members="memberSpendingData" v-if="memberSpendingData.length" />
 
     <div>
-      <h2 id= "highlightTitle">Highlights: </h2>
+      <h2 id="highlightTitle">Highlights: </h2>
       <HighlightCard v-for="highlight in highlights" :key="highlight.id" :title="highlight.Title"
         :amount="highlight.Amount" :userName="highlight.UserName" :date="highlight.Date" />
     </div>
@@ -35,6 +34,12 @@
   <div v-else class="loading">
     <p>Loading group details...</p>
   </div>
+
+  <InboxPopup
+    v-if="showInbox"
+    :messages="inboxMessages"
+    @close="toggleInbox"
+  />
 </template>
 
 <script>
@@ -43,23 +48,24 @@ import { useRoute, useRouter } from "vue-router";
 import { db, auth } from "@/firebase";
 import {
   doc, getDoc, getDocs, collection,
-  updateDoc, deleteDoc,
+  updateDoc, deleteDoc, setDoc,
   arrayRemove, onSnapshot
 } from "firebase/firestore";
 import FamilyBarChart from "@/components/FamilyBarChart.vue";
 import HighlightCard from "@/components/HighlightCard.vue";
+import InboxPopup from "@/components/Family/InboxPopup.vue";
 
 export default {
   components: {
     HighlightCard,
-    FamilyBarChart
+    FamilyBarChart,
+    InboxPopup
   },
   setup() {
     const route = useRoute();
     const router = useRouter();
     const isUpdating = ref(false);
     const groupId = route.params.id;
-    const groupRef = doc(db, "Groups", groupId);
     const group = ref(null);
     const highlights = ref([]);
     const memberDisplayNames = ref({});
@@ -70,19 +76,38 @@ export default {
       }, 0);
     });
 
+    const showInbox = ref(false);
+    const inboxMessages = ref([]);
+
+    const toggleInbox = async () => {
+      if (!group.value || !group.value.members || group.value.members.length === 0) {
+        console.warn("Group or members not ready yet. Skipping inbox load.");
+        return;
+      }
+
+      showInbox.value = !showInbox.value;
+      if (showInbox.value) {
+        await fetchInboxAlerts();
+      }
+    };
+
+    watch(group, (newVal) => {
+      if (showInbox.value && newVal?.members?.length) {
+        fetchInboxAlerts();
+      }
+    });
+
     watch(totalSpent, async (newTotal) => {
-      if (isUpdating.value) return; // Ignore changes while updating.
+      if (isUpdating.value) return;
       if (group.value) {
         const currentTotal = Number(group.value.totalSpent) || 0;
         if (Math.abs(currentTotal - newTotal) > 0.01) {
           isUpdating.value = true;
           try {
             await updateDoc(doc(db, "Groups", groupId), { totalSpent: newTotal });
-            console.log("Updated group totalSpent:", newTotal);
           } catch (e) {
             console.error("Error updating totalSpent:", e);
           } finally {
-            // Slight delay to ensure the snapshot has processed the update
             setTimeout(() => {
               isUpdating.value = false;
             }, 400);
@@ -93,8 +118,6 @@ export default {
 
     const fetchGroupDetails = async () => {
       const groupRef = doc(db, "Groups", groupId);
-
-      //onsnapshot to listen to real life update(not working yet)
       onSnapshot(groupRef, (groupSnap) => {
         if (groupSnap.exists()) {
           const data = groupSnap.data();
@@ -105,28 +128,23 @@ export default {
         }
       });
     };
+
     async function fetchHighlights() {
       const highlightsRef = collection(db, "Groups", groupId, "Highlights");
       const snapshot = await getDocs(highlightsRef);
       highlights.value = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-      console.log("Fetched Highlights:", highlights.value);
     }
 
     const fetchMemberData = async (memberUIDs) => {
-      console.log("👥fetching member data for:", memberUIDs);
       const NameMap = {};
       const tempDataMap = {};
-      const unsubscribes = [];
 
       memberDisplayNames.value = {};
       memberSpendingData.value = [];
 
       const updateAllCharts = () => {
-        console.log("📌showing tempdataMap right update:", JSON.stringify(tempDataMap, null, 2));
         const allReady = memberUIDs.every(uid => tempDataMap[uid]);
         if (allReady) {
-          console.log("✅all member data ready.Updating chart now with:", tempDataMap);
           const updatedData = memberUIDs.map(uid => tempDataMap[uid]);
           memberSpendingData.value = updatedData;
         }
@@ -163,14 +181,9 @@ export default {
             categoryMap[category] += amount;
           });
 
-          console.log(`🧾 [Expenses Update] for ${displayName}:`, categoryMap);
-
           tempDataMap[uid] = {
             name: displayName,
-            categories: {
-              ...(tempDataMap[uid]?.categories || {}),
-              ...categoryMap
-            }
+            categories: { ...categoryMap }
           };
 
           updateAllCharts();
@@ -184,8 +197,6 @@ export default {
             categoryMap[category] += amount;
           });
 
-          console.log(`🎯 [Goals Update] for ${displayName}:`, categoryMap);
-
           tempDataMap[uid] = {
             name: displayName,
             categories: { ...categoryMap }
@@ -193,39 +204,26 @@ export default {
 
           updateAllCharts();
         });
-
-        unsubscribes.push(expensesUnsub, goalsUnsub);
       }
     };
-
 
     const confirmLeaveGroup = async () => {
       const confirmed = window.confirm("Are you sure you want to leave this group?");
       if (!confirmed) return;
 
       const user = auth.currentUser;
-      if (!user) {
-        alert("You must be logged in.");
-        return;
-      }
-
-      const groupRef = doc(db, "Groups", groupId);
-      const userGroupRef = doc(db, "Users", user.uid, "groups", groupId);
+      if (!user) return alert("You must be logged in.");
 
       try {
         await updateDoc(groupRef, {
           members: arrayRemove(user.uid)
         });
 
-        await deleteDoc(userGroupRef);
+        await deleteDoc(doc(db, "Users", user.uid, "groups", groupId));
 
         const updatedGroupSnap = await getDoc(groupRef);
-        if (updatedGroupSnap.exists()) {
-          const updatedGroup = updatedGroupSnap.data();
-          if (!updatedGroup.members || updatedGroup.members.length === 0) {
-            await deleteDoc(groupRef);
-            console.log("Group deleted as no members remain.");
-          }
+        if (updatedGroupSnap.exists() && (!updatedGroupSnap.data().members || updatedGroupSnap.data().members.length === 0)) {
+          await deleteDoc(groupRef);
         }
 
         alert("You have left the group.");
@@ -233,6 +231,60 @@ export default {
       } catch (err) {
         console.error("Error leaving group:", err);
         alert("Failed to leave group.");
+      }
+    };
+
+    const fetchInboxAlerts = async () => {
+      const now = new Date();
+      const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2,"0")}`;
+      const monthText = now.toLocaleString("default", { month: "long", year: "numeric" });
+
+      inboxMessages.value = [];
+
+      for (const uid of group.value.members) {
+        const userDoc = await getDoc(doc(db, "Users", uid));
+        const userName = userDoc.exists() ? userDoc.data().displayName || "Unnamed User" : "Unknown";
+
+        const goalRef = doc(db, "Users", uid, "Goals", monthKey);
+        const goalSnap = await getDoc(goalRef);
+        if (!goalSnap.exists()) continue;
+
+        const goals = goalSnap.data();
+        if (!goals?.categories) continue;
+
+        const alertDocRef = doc(db, "Groups", groupId, "Alerts", `${uid}-${monthKey}`);
+        const alertDocSnap = await getDoc(alertDocRef);
+        const previousAlerts = alertDocSnap.exists() ? alertDocSnap.data().alerts || [] : [];
+
+        const newAlerts = [];
+
+        for (const cat of goals.categories) {
+          const prev = previousAlerts.find(a => a.category === cat.name);
+
+          if (prev && prev.type === "limit-set" && prev.amount !== cat.setAmount) {
+            inboxMessages.value.push({ user: userName, category: cat.name, type: "limit-updated", originalLimit: prev.amount, newLimit: cat.setAmount, monthText });
+            newAlerts.push({ type: "limit-set", category: cat.name, amount: cat.setAmount });
+          }
+
+          const alreadyExceeded = previousAlerts.find(a => a.type === "limit-exceeded" && a.category === cat.name);
+          if (!alreadyExceeded && cat.spent > cat.setAmount) {
+            inboxMessages.value.push({ user: userName, category: cat.name, type: "limit-exceeded", limit: cat.setAmount, monthText });
+            newAlerts.push({ type: "limit-exceeded", category: cat.name });
+          }
+
+          if (!prev) {
+            newAlerts.push({ type: "limit-set", category: cat.name, amount: cat.setAmount });
+          }
+        }
+
+        if (newAlerts.length > 0) {
+          await setDoc(alertDocRef, {
+            userId: uid,
+            userName,
+            month: monthKey,
+            alerts: newAlerts
+          }, { merge: true });
+        }
       }
     };
 
@@ -247,11 +299,15 @@ export default {
       memberSpendingData,
       confirmLeaveGroup,
       totalSpent,
-      highlights
+      highlights,
+      showInbox,
+      inboxMessages,
+      toggleInbox
     };
   }
 };
 </script>
+
 
 <style scoped>
 .family-details {
@@ -367,6 +423,7 @@ li {
 .group-header-box .leave-btn:hover {
   background-color: #dfaa63;
 }
+
 #highlightTitle {
   text-align: left;
 }
