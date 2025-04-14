@@ -13,11 +13,15 @@
             <div class="upload-container">
                 <label for="groupImage">Upload Group Image (optional):</label>
                 <input type="file" id="groupImage" @change="handleFileUpload" accept="image/*" />
+                <div class="image-preview" v-if="imageURL">
+                    <img :src="imageURL" alt="Group image preview" class="preview-img" />
+                    <button @click="removeImage" class="remove-img-btn">Remove</button>
+                </div>
             </div>
 
-            <!-- Only show color swatches if no image is selected -->
-            <div v-if="!imageURL">
-                <label class="color-label">Or Choose Group Color:</label>
+            <!-- Group color selection - always visible -->
+            <div>
+                <label class="color-label">Choose Group Color:</label>
                 <div class="color-swatch-container">
                     <div
                         v-for="color in presetColors"
@@ -82,6 +86,16 @@ const handleFileUpload = async (e) => {
     }
 };
 
+const removeImage = () => {
+    imageURL.value = "";
+    imageFile.value = null;
+    // Reset the file input by creating a new one
+    const fileInput = document.getElementById("groupImage");
+    if (fileInput) {
+        fileInput.value = "";
+    }
+};
+
 const createGroup = async () => {
     if (!newGroupName.value.trim()) {
         alert("Please enter a group name");
@@ -96,15 +110,15 @@ const createGroup = async () => {
 
     loading.value = true;
     const groupCode = generateGroupCode();
-    const groupImage = imageURL.value;
-
+    
     const newGroup = {
         name: newGroupName.value,
-        image: groupImage,
+        image: imageURL.value, // This can be empty if no image was uploaded
+        color: selectedColor.value, // Always include the color
         members: [user.uid],
         totalSpent: 0,
         inviteCode: groupCode,
-        color: selectedColor.value,
+        hasImage: !!imageURL.value, // Boolean flag to indicate if an image is present
         createdBy: user.uid,
         createdAt: new Date()
     };
@@ -153,6 +167,7 @@ const emitClose = () => {
     flex-direction: column;
     gap: 0.5rem;
     align-items: center;
+    margin: 1rem 0;
 }
 
 .modal {
@@ -260,6 +275,37 @@ const emitClose = () => {
 
 .color-swatch:hover {
     transform: scale(1.1);
+}
+
+.image-preview {
+    margin-top: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    max-width: 100%;
+    position: relative;
+}
+
+.preview-img {
+    width: 100%;
+    max-height: 8rem;
+    object-fit: cover;
+}
+
+.remove-img-btn {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: rgba(255, 255, 255, 0.7);
+    border: none;
+    border-radius: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    cursor: pointer;
+}
+
+.remove-img-btn:hover {
+    background: rgba(255, 255, 255, 0.9);
 }
 
 .btn.submit-btn {
