@@ -13,7 +13,7 @@
       <button class="get-started-btn" @click="triggerSingleCoin">Get Started</button>
     </div>
 
-    <!-- 🪙 Single Center Coin -->
+    <!-- 🪙 Coin -->
     <img v-if="showCoin" src="/images/coin.png" class="center-coin" alt="Coin" />
   </div>
 </template>
@@ -32,8 +32,8 @@ export default {
 
       setTimeout(() => {
         showCoin.value = false;
-        router.push('/auth');
-      }, 1000); // Coin disappears after 1s, then redirect
+        router.push('/auth/main'); // new login/signup page
+      }, 1000);
     };
 
     return {
@@ -133,7 +133,6 @@ export default {
   transform: scale(1.05);
 }
 
-/* 🪙 Single Coin Style */
 .center-coin {
   position: fixed;
   top: 50%;
