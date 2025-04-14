@@ -9,12 +9,7 @@
 
       <div class="right">
         <div class="icon-leave-wrap">
-          <img
-            src="/images/inbox-icon.png"
-            alt="Inbox"
-            class="inbox-icon"
-            @click="toggleInbox"
-          />
+          <img src="/images/inbox-icon.png" alt="Inbox" class="inbox-icon" @click="toggleInbox" />
           <button class="back-btn" @click="$router.back()">← Back</button>
           <button class="leave-btn" @click="confirmLeaveGroup">Leave Family</button>
         </div>
@@ -43,8 +38,8 @@
 </template>
 
 <script>
-import { ref, onMounted, computed, watch } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { ref, computed, watch, onMounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { db, auth } from "@/firebase";
 import {
   doc, getDoc, getDocs, collection,
@@ -70,14 +65,14 @@ export default {
     const highlights = ref([]);
     const memberDisplayNames = ref({});
     const memberSpendingData = ref([]);
+    const showInbox = ref(false);
+    const inboxMessages = ref([]);
+
     const totalSpent = computed(() => {
       return memberSpendingData.value.reduce((sum, member) => {
         return sum + Object.values(member.categories).reduce((a, b) => a + b, 0);
       }, 0);
     });
-
-    const showInbox = ref(false);
-    const inboxMessages = ref([]);
 
     const toggleInbox = async () => {
       if (!group.value || !group.value.members || group.value.members.length === 0) {
@@ -116,8 +111,22 @@ export default {
       }
     });
 
+    const updateGroupTotal = async (newTotal) => {
+      try {
+        await updateDoc(doc(db, "Groups", groupId), { totalSpent: newTotal });
+        console.log("Updated group totalSpent:", newTotal);
+      } catch (e) {
+        console.error("Error updating totalSpent:", e);
+      } finally {
+        setTimeout(() => {
+          isUpdating.value = false;
+        }, 400);
+      }
+    };
+
     const fetchGroupDetails = async () => {
       const groupRef = doc(db, "Groups", groupId);
+
       onSnapshot(groupRef, (groupSnap) => {
         if (groupSnap.exists()) {
           const data = groupSnap.data();
@@ -129,13 +138,20 @@ export default {
       });
     };
 
-    async function fetchHighlights() {
+    const fetchHighlights = async () => {
       const highlightsRef = collection(db, "Groups", groupId, "Highlights");
       const snapshot = await getDocs(highlightsRef);
-      highlights.value = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    }
+
+      // Map and sort the highlights by date in descending order
+      highlights.value = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .sort((a, b) => new Date(b.Date) - new Date(a.Date)); // Sort by date (most recent first)
+
+      console.log("Fetched and sorted Highlights:", highlights.value);
+    };
 
     const fetchMemberData = async (memberUIDs) => {
+      console.log("👥fetching member data for:", memberUIDs);
       const NameMap = {};
       const tempDataMap = {};
 
@@ -313,7 +329,6 @@ export default {
   }
 };
 </script>
-
 
 <style scoped>
 .family-details {
