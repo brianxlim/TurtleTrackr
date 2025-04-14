@@ -210,7 +210,7 @@ export default {
       }
 
       const groupRef = doc(db, "Groups", groupId);
-      const userGroupRef = doc(db, "Users", user.uid, "groups", groupId);
+      const userGroupRef = doc(db, "Users", user.uid, "Groups", groupId);
 
       try {
         await updateDoc(groupRef, {
