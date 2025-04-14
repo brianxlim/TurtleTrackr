@@ -365,7 +365,7 @@ export default {
           members: arrayRemove(user.uid)
         });
 
-        await deleteDoc(doc(db, "Users", user.uid, "groups", this.groupId));
+        await deleteDoc(doc(db, "Users", user.uid, "Groups", this.groupId));
 
         const updatedGroupSnap = await getDoc(groupRef);
         if (updatedGroupSnap.exists() && (!updatedGroupSnap.data().members || updatedGroupSnap.data().members.length === 0)) {
