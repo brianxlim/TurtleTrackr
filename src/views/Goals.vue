@@ -393,6 +393,7 @@ export default {
     width: 100%; 
     max-width: 200px;
     text-align: center;
+    font-size: medium;
 }
 
 .change-goals:hover {
