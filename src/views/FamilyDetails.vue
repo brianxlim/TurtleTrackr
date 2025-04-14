@@ -10,12 +10,7 @@
 
       <div class="right">
         <div class="icon-leave-wrap">
-          <img
-            src="/images/inbox-icon.png"
-            alt="Inbox"
-            class="inbox-icon"
-            @click="toggleInbox"
-          />
+          <img src="/images/inbox-icon.png" alt="Inbox" class="inbox-icon" @click="toggleInbox" />
           <button class="back-btn" @click="$router.back()">← Back</button>
           <button class="leave-btn" @click="confirmLeaveGroup">Leave Family</button>
         </div>
@@ -23,10 +18,10 @@
       </div>
     </div>
 
-    <FamilyBarChart :members="memberSpendingData" v-if="memberSpendingData.length" />
+    <FamilyBarChart :members="memberSpendingData" v-if="memberSpendingData.length" @member-click="goToMember" />
 
     <div>
-      <h2 id= "highlightTitle">Highlights: </h2>
+      <h2 id="highlightTitle">Highlights: </h2>
       <HighlightCard v-for="highlight in highlights" :key="highlight.id" :title="highlight.Title"
         :amount="highlight.Amount" :userName="highlight.UserName" :date="highlight.Date" />
     </div>
@@ -35,6 +30,13 @@
   <div v-else class="loading">
     <p>Loading group details...</p>
   </div>
+
+  <div v-if="selectedMemberUid" class="modal-overlay">
+  <div class="modal-content">
+    <button class="close-btn" @click="selectedMemberUid = null">✖</button>
+    <History :uid="selectedMemberUid" />
+  </div>
+</div>
 </template>
 
 <script>
@@ -48,10 +50,14 @@ import {
 } from "firebase/firestore";
 import FamilyBarChart from "@/components/FamilyBarChart.vue";
 import HighlightCard from "@/components/HighlightCard.vue";
+import History from "@/views/History.vue";
 
 export default {
+  props: ['id'],
+
   components: {
     HighlightCard,
+    History,
     FamilyBarChart
   },
   setup() {
@@ -69,6 +75,14 @@ export default {
         return sum + Object.values(member.categories).reduce((a, b) => a + b, 0);
       }, 0);
     });
+
+    const selectedMemberUid = ref(null);
+    const goToMember = (uid) => {
+      console.log("📥 Received click for member uid:", uid);
+      selectedMemberUid.value = uid;
+    };
+
+
 
     watch(totalSpent, async (newTotal) => {
       if (isUpdating.value) return; // Ignore changes while updating.
@@ -166,12 +180,12 @@ export default {
           console.log(`🧾 [Expenses Update] for ${displayName}:`, categoryMap);
 
           tempDataMap[uid] = {
+            ...(tempDataMap[uid] || {}),
+            uid,
             name: displayName,
-            categories: {
-              ...(tempDataMap[uid]?.categories || {}),
-              ...categoryMap
-            }
+            categories: { ...categoryMap }
           };
+
 
           updateAllCharts();
         });
@@ -187,9 +201,12 @@ export default {
           console.log(`🎯 [Goals Update] for ${displayName}:`, categoryMap);
 
           tempDataMap[uid] = {
+            ...(tempDataMap[uid] || {}),
+            uid, 
             name: displayName,
             categories: { ...categoryMap }
           };
+
 
           updateAllCharts();
         });
@@ -247,7 +264,9 @@ export default {
       memberSpendingData,
       confirmLeaveGroup,
       totalSpent,
-      highlights
+      highlights,
+      goToMember,
+      selectedMemberUid
     };
   }
 };
@@ -367,6 +386,7 @@ li {
 .group-header-box .leave-btn:hover {
   background-color: #dfaa63;
 }
+
 #highlightTitle {
   text-align: left;
 }
@@ -387,5 +407,39 @@ li {
 
 .inbox-icon:hover {
   transform: scale(1.1);
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+}
+
+.modal-content {
+  background: #e8bb82;
+  width: 90%;
+  max-width: 800px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 20px;
+  border-radius: 10px;
+  position: relative;
+}
+
+.close-btn {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  font-size: 18px;
+  cursor: pointer;
+  background: none;
+  border: none;
 }
 </style>
