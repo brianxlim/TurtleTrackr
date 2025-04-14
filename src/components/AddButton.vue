@@ -42,8 +42,7 @@
               <label for="highlights">Send Highlights to:</label>
               <select id="highlights" v-model="formData.highlights">
                 <!-- Default option "None" -->
-                <option value="" disabled>None</option>
-                <option value="">None</option> <!-- None option -->
+                <option value="None">None</option> <!-- None option -->
                 <!-- Dropdown options dynamically populated from groups -->
                 <option v-for="group in groups" :key="group.id" :value="group.id">{{ group.name }}</option>
               </select>
@@ -77,7 +76,7 @@ export default {
         amount: "",
         date: today, // Default to today's date
         category: "",
-        highlights: [],
+        highlights: "None",
       },
       groups: [],
       maxDate: today, // Restrict future dates
@@ -129,7 +128,7 @@ export default {
         amount: "",
         date: this.maxDate, // Reset to today's date
         category: "",
-        highlights: "",
+        highlights: "None",
       };
     },
     validateForm() {
