@@ -20,9 +20,19 @@
     <FamilyBarChart :members="memberSpendingData" v-if="memberSpendingData.length" />
 
     <div>
-      <h2 id="highlightTitle">Highlights: </h2>
-      <HighlightCard v-for="highlight in highlights" :key="highlight.id" :title="highlight.Title"
-        :amount="highlight.Amount" :userName="highlight.UserName" :date="highlight.Date" />
+      <HighlightCard 
+        v-for="highlight in highlights" 
+        :key="highlight.id" 
+        :title="highlight.Title"
+        :amount="highlight.Amount" 
+        :userName="highlight.UserName" 
+        :date="highlight.Date"
+        :likedBy="highlight.likedBy || []"
+        :dislikedBy="highlight.dislikedBy || []"
+        :groupId="groupId"
+        :postId="highlight.id"
+        @like="handleLike"
+        @dislike="handleDislike" />
     </div>
   </div>
 
@@ -43,8 +53,8 @@ import { useRoute, useRouter } from 'vue-router';
 import { db, auth } from "@/firebase";
 import {
   doc, getDoc, getDocs, collection,
-  updateDoc, deleteDoc, setDoc,
-  arrayRemove, onSnapshot
+  updateDoc, deleteDoc, arrayUnion, arrayRemove,
+  onSnapshot
 } from "firebase/firestore";
 import FamilyBarChart from "@/components/FamilyBarChart.vue";
 import HighlightCard from "@/components/HighlightCard.vue";
@@ -65,7 +75,8 @@ export default {
     const highlights = ref([]);
     const memberDisplayNames = ref({});
     const memberSpendingData = ref([]);
-    const showInbox = ref(false);
+    const showInbox = ref(false,
+      currentUser: null);
     const inboxMessages = ref([]);
 
     const totalSpent = computed(() => {
@@ -138,17 +149,18 @@ export default {
       });
     };
 
-    const fetchHighlights = async () => {
-      const highlightsRef = collection(db, "Groups", groupId, "Highlights");
-      const snapshot = await getDocs(highlightsRef);
+    async fetchHighlights() {
+      const highlightsRef = collection(db, "Groups", this.groupId, "Highlights");
+      // Use onSnapshot for real-time updates to highlights including likes/dislikes
+      onSnapshot(highlightsRef, (snapshot) => {
+        // Map and sort the highlights by date in descending order
+        this.highlights = snapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() }))
+          .sort((a, b) => new Date(b.Date) - new Date(a.Date)); // Sort by date (most recent first)
 
-      // Map and sort the highlights by date in descending order
-      highlights.value = snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
-        .sort((a, b) => new Date(b.Date) - new Date(a.Date)); // Sort by date (most recent first)
-
-      console.log("Fetched and sorted Highlights:", highlights.value);
-    };
+        console.log("Fetched and sorted Highlights:", this.highlights);
+      });
+    },
 
     const fetchMemberData = async (memberUIDs) => {
       console.log("👥fetching member data for:", memberUIDs);
@@ -221,7 +233,87 @@ export default {
           updateAllCharts();
         });
       }
-    };
+    },
+
+    async handleLike(postId) {
+      if (!auth.currentUser) {
+        alert("You must be logged in to like posts");
+        return;
+      }
+      
+      const userId = auth.currentUser.uid;
+      const highlightRef = doc(db, "Groups", this.groupId, "Highlights", postId);
+      
+      try {
+        const highlightDoc = await getDoc(highlightRef);
+        if (!highlightDoc.exists()) {
+          console.error("Highlight not found");
+          return;
+        }
+        
+        const highlightData = highlightDoc.data();
+        const likedBy = highlightData.likedBy || [];
+        const dislikedBy = highlightData.dislikedBy || [];
+        
+        // Check if user already liked
+        if (likedBy.includes(userId)) {
+          // User already liked, remove like
+          await updateDoc(highlightRef, {
+            likedBy: arrayRemove(userId)
+          });
+          console.log("Like removed");
+        } else {
+          // Add like and remove dislike if exists
+          await updateDoc(highlightRef, {
+            likedBy: arrayUnion(userId),
+            dislikedBy: dislikedBy.includes(userId) ? arrayRemove(userId) : dislikedBy
+          });
+          console.log("Like added");
+        }
+      } catch (error) {
+        console.error("Error handling like:", error);
+      }
+    },
+    
+    async handleDislike(postId) {
+      if (!auth.currentUser) {
+        alert("You must be logged in to dislike posts");
+        return;
+      }
+      
+      const userId = auth.currentUser.uid;
+      const highlightRef = doc(db, "Groups", this.groupId, "Highlights", postId);
+      
+      try {
+        const highlightDoc = await getDoc(highlightRef);
+        if (!highlightDoc.exists()) {
+          console.error("Highlight not found");
+          return;
+        }
+        
+        const highlightData = highlightDoc.data();
+        const likedBy = highlightData.likedBy || [];
+        const dislikedBy = highlightData.dislikedBy || [];
+        
+        // Check if user already disliked
+        if (dislikedBy.includes(userId)) {
+          // User already disliked, remove dislike
+          await updateDoc(highlightRef, {
+            dislikedBy: arrayRemove(userId)
+          });
+          console.log("Dislike removed");
+        } else {
+          // Add dislike and remove like if exists
+          await updateDoc(highlightRef, {
+            dislikedBy: arrayUnion(userId),
+            likedBy: likedBy.includes(userId) ? arrayRemove(userId) : likedBy
+          });
+          console.log("Dislike added");
+        }
+      } catch (error) {
+        console.error("Error handling dislike:", error);
+      }
+    },
 
     const confirmLeaveGroup = async () => {
       const confirmed = window.confirm("Are you sure you want to leave this group?");
