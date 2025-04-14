@@ -212,7 +212,13 @@ export default {
       if (!confirmed) return;
 
       const user = auth.currentUser;
-      if (!user) return alert("You must be logged in.");
+      if (!user) {
+        alert("You must be logged in.");
+        return;
+      }
+
+      const groupRef = doc(db, "Groups", groupId);
+      const userGroupRef = doc(db, "Users", user.uid, "Groups", groupId);
 
       try {
         await updateDoc(groupRef, {
