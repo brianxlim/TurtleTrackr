@@ -205,7 +205,7 @@ export default {
   cursor: pointer;
   padding: 4px 8px;
   border-radius: 5px;
-  background-color: #e8bb82;
+  background-color: var(--color-secondary-dark);
   transition: background-color 0.2s;
 }
 

@@ -500,7 +500,7 @@ export default {
 }
 
 .leave-btn {
-  background-color: #e57373;
+  background-color: var(--color-secondary-dark);
   color: white;
   padding: 10px 20px;
   border: none;
@@ -578,7 +578,7 @@ li {
 }
 
 .group-header-box .leave-btn {
-  background-color: #e8bb82;
+  background-color: var(--color-secondary-dark);
   color: black;
   border: none;
   padding: 8px 16px;
@@ -628,7 +628,7 @@ li {
 }
 
 .modal-content {
-  background: #e8bb82;
+  background: var(--color-secondary-medium);
   width: 90%;
   max-width: 800px;
   max-height: 90vh;
