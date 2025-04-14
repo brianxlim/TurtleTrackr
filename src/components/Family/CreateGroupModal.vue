@@ -2,44 +2,46 @@
     <div class="modal">
         <div class="modal-content">
             <span class="close" @click="emitClose">&times;</span>
-            <div class="mascot-wrap">
-                <img src="/images/turtle_wave.gif" alt="Turtle Wave" class="turtle-mascot" />
-                <div class="speech-bubble">Hi pookie! Ready to create a fam?</div>
-            </div>
-            <h2>Create Group</h2>
-            <input v-model="newGroupName" placeholder="Enter group name" class="input-field" />
-
-            <!-- File upload input for group image -->
-            <div class="upload-container">
-                <label for="groupImage">Upload Group Image (optional):</label>
-                <input type="file" id="groupImage" @change="handleFileUpload" accept="image/*" />
-                <div class="image-preview" v-if="imageURL">
-                    <img :src="imageURL" alt="Group image preview" class="preview-img" />
-                    <button @click="removeImage" class="remove-img-btn">Remove</button>
+            <div class="modal-scroll-container">
+                <div class="mascot-wrap">
+                    <img src="/images/turtle_wave.gif" alt="Turtle Wave" class="turtle-mascot" />
+                    <div class="speech-bubble">Hi pookie! Ready to create a fam?</div>
                 </div>
-            </div>
+                <h2>Create Group</h2>
+                <input v-model="newGroupName" placeholder="Enter group name" class="input-field" />
 
-            <!-- Group color selection - always visible -->
-            <div>
-                <label class="color-label">Choose Group Color:</label>
-                <div class="color-swatch-container">
-                    <div
-                        v-for="color in presetColors"
-                        :key="color"
-                        class="color-swatch"
-                        :style="{
-                            backgroundColor: color,
-                            border: selectedColor === color ? '0.1875rem solid #444' : '0.125rem solid transparent'
-                        }"
-                        @click="selectedColor = color"
-                    ></div>
+                <!-- File upload input for group image -->
+                <div class="upload-container">
+                    <label for="groupImage">Upload Group Image (optional):</label>
+                    <input type="file" id="groupImage" @change="handleFileUpload" accept="image/*" />
+                    <div class="image-preview" v-if="imageURL">
+                        <img :src="imageURL" alt="Group image preview" class="preview-img" />
+                        <button @click="removeImage" class="remove-img-btn">Remove</button>
+                    </div>
                 </div>
-            </div>
 
-            <button @click="createGroup" class="btn submit-btn" :disabled="loading">
-                <span v-if="loading">Creating...</span>
-                <span v-else>Create</span>
-            </button>
+                <!-- Group color selection - always visible -->
+                <div>
+                    <label class="color-label">Choose Group Color:</label>
+                    <div class="color-swatch-container">
+                        <div
+                            v-for="color in presetColors"
+                            :key="color"
+                            class="color-swatch"
+                            :style="{
+                                backgroundColor: color,
+                                border: selectedColor === color ? '0.1875rem solid #444' : '0.125rem solid transparent'
+                            }"
+                            @click="selectedColor = color"
+                        ></div>
+                    </div>
+                </div>
+
+                <button @click="createGroup" class="btn submit-btn" :disabled="loading">
+                    <span v-if="loading">Creating...</span>
+                    <span v-else>Create</span>
+                </button>
+            </div>
         </div>
     </div>
 </template>
@@ -162,14 +164,6 @@ const emitClose = () => {
 </script>
 
 <style scoped>
-.upload-container {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    align-items: center;
-    margin: 1rem 0;
-}
-
 .modal {
     position: fixed;
     top: 0;
@@ -182,18 +176,40 @@ const emitClose = () => {
     align-items: center;
     z-index: 999;
     animation: fadeIn 0.3s ease-out;
+    overflow: hidden;
 }
 
 .modal-content {
     background-color: #fffaf0;
     border-radius: 1.25rem;
-    padding: 2rem;
     width: 90%;
     max-width: 25rem;
-    text-align: center;
+    max-height: 90vh; /* Limit height to 90% of viewport height */
     box-shadow: 0 0.75rem 1.875rem rgba(0, 0, 0, 0.15);
     position: relative;
     animation: slideIn 0.4s ease-out;
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-scroll-container {
+    padding: 2rem;
+    overflow-y: auto;
+    max-height: calc(90vh - 2rem); /* Allow scrolling within container */
+    scrollbar-width: thin;
+    scrollbar-color: #aaa transparent;
+}
+
+/* Custom scrollbar styles for Webkit browsers */
+.modal-scroll-container::-webkit-scrollbar {
+    width: 6px;
+}
+.modal-scroll-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+.modal-scroll-container::-webkit-scrollbar-thumb {
+    background-color: #aaa;
+    border-radius: 6px;
 }
 
 .close {
@@ -203,6 +219,7 @@ const emitClose = () => {
     font-size: 1.75rem;
     cursor: pointer;
     color: #aaa;
+    z-index: 10;
 }
 
 .close:hover {
@@ -217,8 +234,8 @@ const emitClose = () => {
 }
 
 .turtle-mascot {
-    width: 6.25rem;
-    max-height: 7.5rem;
+    width: 5rem; /* Smaller mascot */
+    max-height: 6rem;
     object-fit: contain;
     margin-bottom: 0.5rem;
     animation: floatWave 2s ease-in-out infinite;
@@ -235,7 +252,7 @@ const emitClose = () => {
 }
 
 .modal-content h2 {
-    margin-bottom: 1.25rem;
+    margin-bottom: 1rem;
     font-size: 1.5rem;
     color: #333;
 }
@@ -251,9 +268,17 @@ const emitClose = () => {
     font-family: var(--font-body);
 }
 
+.upload-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: center;
+    margin: 0.75rem 0;
+}
+
 .color-label {
     display: block;
-    margin-top: 0.9375rem;
+    margin-top: 0.75rem;
     font-size: 1rem;
 }
 
@@ -262,12 +287,12 @@ const emitClose = () => {
     flex-wrap: wrap;
     justify-content: center;
     gap: 0.625rem;
-    margin: 0.625rem 0 1.25rem;
+    margin: 0.5rem 0 1rem;
 }
 
 .color-swatch {
-    width: 1.875rem;
-    height: 1.875rem;
+    width: 1.5rem; /* Smaller color swatches */
+    height: 1.5rem;
     border-radius: 50%;
     cursor: pointer;
     transition: transform 0.2s ease, border 0.2s ease;
@@ -288,7 +313,7 @@ const emitClose = () => {
 
 .preview-img {
     width: 100%;
-    max-height: 8rem;
+    max-height: 6rem; /* Smaller preview image */
     object-fit: cover;
 }
 
@@ -318,6 +343,7 @@ const emitClose = () => {
     cursor: pointer;
     font-size: 1rem;
     margin-top: 0.625rem;
+    width: 100%;
 }
 
 .btn.submit-btn:disabled {
