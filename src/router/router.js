@@ -10,14 +10,21 @@ import Auth from '@/views/Auth.vue';
 import { auth } from '@/firebase';
 
 const routes = [
-  // Use a dynamic redirect for the root path
   {
     path: '/',
-    name: 'Landing',
+    redirect: '/home'
+  },
+  {
+    path: '/auth',
+    redirect: '/auth/landing',
+  },
+  {
+    path: '/auth/landing',
+    name: 'AuthLanding',
     component: Landing
   },
-  { 
-    path: '/auth',
+  {
+    path: '/auth/main',
     name: 'Auth',
     component: Auth
   },
@@ -73,10 +80,7 @@ router.beforeEach((to, from, next) => {
   if (to.path === '/auth' && loggedIn) {
     next({ path: '/home' });
   }
-  // // If navigating to the root, redirect based on login status
-  // else if (to.path === '/') {
-  //   next(loggedIn ? '/home' : '/auth');
-  // }
+
   // If the route requires auth and user isn't logged in, redirect to /auth
   else if (to.meta.requiresAuth && !loggedIn) {
     next({ path: '/auth' });
