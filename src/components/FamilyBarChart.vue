@@ -2,12 +2,8 @@
   <div class="chart-wrapper">
     <div class="left-panel">
       <div class="category-selector">
-        <button
-          v-for="cat in ['Overall', 'Food', 'Travel', 'Shopping', 'Others']"
-          :key="cat"
-          :class="{ active: selectedCategory === cat }"
-          @click="selectCategory(cat)"
-        >
+        <button v-for="cat in ['Overall', 'Food', 'Travel', 'Shopping', 'Others']" :key="cat"
+          :class="{ active: selectedCategory === cat }" @click="selectCategory(cat)">
           {{ cat }}
         </button>
       </div>
@@ -19,16 +15,8 @@
     <div class="custom-legend">
       <h3>Members</h3>
       <ul>
-        <li
-          v-for="(member, i) in members"
-          :key="i"
-          class="member-legend-item"
-          @click="goToMember(member.uid)"
-        >
-          <span
-            class="color-box"
-            :style="{ backgroundColor: colorPalette[i % colorPalette.length] }"
-          ></span>
+        <li v-for="(member, i) in members" :key="i" class="member-legend-item" @click="goToMember(member.uid)">
+          <span class="color-box" :style="{ backgroundColor: colorPalette[i % colorPalette.length] }"></span>
           {{ member.name }}
         </li>
       </ul>
@@ -53,6 +41,10 @@ export default {
       type: Array,
       required: true,
     },
+    month: {
+      type: String,
+      required: true,
+    },
   },
   data() {
     return {
@@ -66,6 +58,21 @@ export default {
   mounted() {
     this.createChart();
   },
+  watch: {
+    month: {
+      immediate: true,
+      handler() {
+        this.createChart();
+      },
+    },
+    members: {
+      immediate: true,
+      handler() {
+        this.createChart();
+      },
+    },
+  },
+  
   methods: {
     async createChart() {
       if (!this.ready) return;
@@ -79,11 +86,12 @@ export default {
       Chart.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip, Legend);
 
       const labels = this.members.map((m) => m.name);
-      const data = this.members.map((m) =>
-        this.selectedCategory === "Overall"
-          ? Object.values(m.categories || {}).reduce((a, b) => a + b, 0)
-          : m.categories?.[this.selectedCategory] || 0
-      );
+      const data = this.members.map((m) => {
+        const monthlyData = m.monthlyBreakdown?.[this.month] || {};
+        return this.selectedCategory === "Overall"
+          ? Object.values(monthlyData).reduce((a, b) => a + b, 0)
+          : monthlyData[this.selectedCategory] || 0;
+      });
 
       this.chart = new Chart(ctx, {
         type: "bar",
@@ -156,7 +164,7 @@ export default {
     },
 
     goToMember(uid) {
-      this.$emit("member-click", uid); 
+      this.$emit("member-click", uid);
       console.log("📦 Emitting member-click for uid:", uid);
     },
 
@@ -176,26 +184,31 @@ export default {
   margin: 20px;
   flex-wrap: wrap;
 }
+
 .left-panel {
   flex: 2;
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
+
 .bar-chart-container {
   flex: 1;
   min-width: 300px;
   max-width: 100%;
 }
+
 .custom-legend {
   flex: 1;
   max-width: 220px;
   padding-top: 20px;
 }
+
 .custom-legend ul {
   list-style: none;
   padding: 0;
 }
+
 .custom-legend li {
   display: flex;
   align-items: center;
@@ -212,12 +225,14 @@ export default {
 .custom-legend li:hover {
   background-color: #dce4dc;
 }
+
 .color-box {
   width: 16px;
   height: 16px;
   margin-right: 10px;
   border-radius: 3px;
 }
+
 .category-selector {
   display: flex;
   justify-content: center;
@@ -225,6 +240,7 @@ export default {
   gap: 0px;
   margin-bottom: 20px;
 }
+
 .category-selector button {
   padding: 6px 12px;
   border: 1px solid #ccc;
@@ -235,6 +251,7 @@ export default {
   transition: background 0.2s;
   border: 1px solid black;
 }
+
 .category-selector button.active {
   background-color: #3d5538;
   color: white;

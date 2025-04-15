@@ -17,7 +17,23 @@
       </div>
     </div>
 
-    <FamilyBarChart :members="memberSpendingData" v-if="memberSpendingData.length" @member-click="goToMember" />
+  
+    <div class="month-bar">
+      <button class="nav-arrow" @click="prevMonth">«</button>
+      <span class="month-title">{{ formattedMonth }}</span>
+      <button class="nav-arrow" @click="nextMonth">»</button>
+
+    </div>
+
+
+    <FamilyBarChart
+      :members="memberSpendingData"
+      v-if="memberSpendingData.length"
+      @member-click="goToMember"
+      :month="selectedMonth"
+      :selectedCategory="selectedCategory"
+    />
+
 
     <div>
       <h2 id="highlightTitle">Highlights: </h2>
@@ -42,11 +58,11 @@
   </div>
 
   <div v-if="selectedMemberUid" class="modal-overlay">
-  <div class="modal-content">
-    <button class="close-btn" @click="selectedMemberUid = null">✖</button>
-    <History :uid="selectedMemberUid" />
+    <div class="modal-content">
+      <button class="close-btn" @click="selectedMemberUid = null">✖</button>
+      <History :uid="selectedMemberUid" />
+    </div>
   </div>
-</div>
 
   <InboxPopup
     v-if="showInbox"
@@ -77,6 +93,9 @@ export default {
     InboxPopup
   },
   data() {
+    const now = new Date();
+  const defaultMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
     return {
       isUpdating: false,
       groupId: this.$route.params.id,
@@ -87,15 +106,29 @@ export default {
       showInbox: false,
       inboxMessages: [],
       currentUser: null,
-      selectedMemberUid:null
+      selectedMemberUid:null,
+      selectedMonth: defaultMonth,
+    availableMonths: Array.from({ length: 6 }).map((_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    })
     };
   },
   computed: {
+    
     totalSpent() {
       return this.memberSpendingData.reduce((sum, member) => {
         return sum + Object.values(member.categories).reduce((a, b) => a + b, 0);
       }, 0);
-    }
+    },
+
+    formattedMonth() {
+  const [year, month] = this.selectedMonth.split("-");
+  const date = new Date(year, month - 1);
+  return date.toLocaleString("default", { month: "long", year: "numeric" });
+}
+
+    
   },
   
 
@@ -223,28 +256,35 @@ export default {
         };
 
         const expensesUnsub = onSnapshot(collection(db, "Users", uid, "Expenses"), (snap) => {
-          categoryMap.Food = 0;
-          categoryMap.Travel = 0;
-          categoryMap.Shopping = 0;
-          categoryMap.Others = 0;
+  const monthMap = {};
 
-          snap.forEach(doc => {
-            const data = doc.data();
-            const amount = parseFloat(data.Amount) || 0;
-            const category = data.Category || "Others";
-            categoryMap[category] += amount;
-          });
+  snap.forEach((doc) => {
+    const data = doc.data();
+    const amount = parseFloat(data.Amount) || 0;
+    const category = data.Category || "Others";
+    const date = new Date(data.Date);
+    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 
-          tempDataMap[uid] = {
-            ...(tempDataMap[uid] || {}),
-            uid,
-            name: displayName,
-            categories: { ...categoryMap }
-          };
+    if (!monthMap[monthKey]) {
+      monthMap[monthKey] = { Food: 0, Travel: 0, Shopping: 0, Others: 0 };
+    }
 
+    if (!monthMap[monthKey][category]) {
+      monthMap[monthKey][category] = 0;
+    }
 
-          updateAllCharts();
-        });
+    monthMap[monthKey][category] += amount;
+  });
+
+  tempDataMap[uid] = {
+    ...(tempDataMap[uid] || {}),
+    uid,
+    name: displayName,
+    monthlyBreakdown: { ...monthMap },
+  };
+
+  updateAllCharts();
+});
 
         const goalsUnsub = onSnapshot(collection(db, "Users", uid, "Goals"), (snap) => {
           snap.forEach(doc => {
@@ -346,6 +386,18 @@ export default {
         console.error("Error handling dislike:", error);
       }
     },
+
+    prevMonth() {
+  const [year, month] = this.selectedMonth.split("-").map(Number);
+  const prev = new Date(year, month - 2); // month -1 is current, -2 for previous
+  this.selectedMonth = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, "0")}`;
+},
+
+nextMonth() {
+  const [year, month] = this.selectedMonth.split("-").map(Number);
+  const next = new Date(year, month); // month is current, month+1 internally
+  this.selectedMonth = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`;
+} ,
 
     async confirmLeaveGroup() {
       const confirmed = window.confirm("Are you sure you want to leave this group?");
@@ -647,4 +699,53 @@ li {
   background: none;
   border: none;
 }
+
+.month-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.month-title {
+  font-size: 1.5rem;
+  font-weight: bold;
+  flex: 1;
+  text-align: center;
+}
+
+.nav-arrow {
+  background-color: #e4dccd;
+  border: none;
+  font-size: 1.2rem;
+  padding: 6px 12px;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.category-wrap {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-left: auto;
+}
+
+.category-wrap button {
+  padding: 6px 12px;
+  border: 1px solid black;
+  background-color: #eee;
+  border-radius: 5px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.category-wrap button.active {
+  background-color: #3d5538;
+  color: white;
+  border-color: #3d5538;
+}
+
 </style>
