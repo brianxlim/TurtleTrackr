@@ -13,6 +13,7 @@
     "canvas-confetti": "^1.9.3",
     "chart.js": "^4.4.8",
     "firebase": "^11.4.0",
+    "firebase-tools": "^14.1.0",
     "pinia": "^3.0.1",
     "primeicons": "^7.0.0",
     "primevue": "^4.3.1",

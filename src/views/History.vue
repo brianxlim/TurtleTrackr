@@ -7,12 +7,18 @@
 
 <script setup>
 import { computed } from "vue";
-import { useRoute } from "vue-router";
 import ExpenseList from "@/components/ExpenseList.vue";
 import { auth } from "@/firebase";
 
-const route = useRoute();
-const uidToFetch = computed(() => route.params.uid || auth.currentUser?.uid);
+
+const props = defineProps({
+  uid: {
+    type: String,
+    default: null
+  }
+});
+
+const uidToFetch = computed(() => props.uid || auth.currentUser?.uid);
 </script>
 
 <style>

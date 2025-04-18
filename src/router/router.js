@@ -11,6 +11,10 @@ import { auth } from '@/firebase';
 
 const routes = [
   {
+    path: '/',
+    redirect: '/home'
+  },
+  {
     path: '/auth',
     redirect: () => {
       // Only redirect to landing page if not yet seen in sessionStorage
@@ -24,22 +28,13 @@ const routes = [
     component: Landing
   },
   {
-    path: '/',
-    redirect: '/home'
-  },
-  {
-    path: '/auth/landing',
-    name: 'AuthLanding',
-    component: Landing
+    path: '/auth/main',
+    name: 'Auth',
+    component: Auth
   },
   {
     path: '/auth/signup',
     name: 'Signup',
-    component: Auth
-  },
-  {
-    path: '/auth/main',
-    name: 'Auth',
     component: Auth
   },
   { 
