@@ -394,6 +394,7 @@ export default {
     max-width: 200px;
     text-align: center;
     font-size: medium;
+    font-family: var(--font-body);
 }
 
 .change-goals:hover {
