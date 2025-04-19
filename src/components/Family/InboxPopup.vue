@@ -31,7 +31,7 @@
             </template>
             
             <template v-else-if="message.type === 'limit-exceeded'">
-              <span class="warning">Exceeded</span> food limit of ${{ message.limit }} for {{ message.monthText }}.
+              <span class="warning">Exceeded</span> {{message.category}} limit of ${{ message.limit }} for {{ message.monthText }}.
             </template>
             
             <!-- Fallback for any other message type -->
