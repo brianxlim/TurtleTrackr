@@ -49,7 +49,7 @@
 <script setup>
 import { ref } from 'vue';
 import { db, auth, storage } from '@/firebase';
-import { addDoc, collection, doc, setDoc, getDoc } from 'firebase/firestore';
+import { addDoc, collection, doc, setDoc, getDoc, getDocs, query } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import confetti from 'canvas-confetti';
 
@@ -111,29 +111,43 @@ const createGroup = async () => {
     }
 
     loading.value = true;
-    const groupCode = generateGroupCode();
     
-    const newGroup = {
-        name: newGroupName.value,
-        image: imageURL.value, // This can be empty if no image was uploaded
-        color: selectedColor.value, // Always include the color
-        members: [user.uid],
-        totalSpent: 0,
-        inviteCode: groupCode,
-        hasImage: !!imageURL.value, // Boolean flag to indicate if an image is present
-        createdBy: user.uid,
-        createdAt: new Date()
-    };
-
     try {
-        // Create group in main Groups collection.
+        // Check how many groups the user is already in
+        const userGroupsRef = collection(db, "Users", user.uid, "Groups");
+        const userGroupsSnapshot = await getDocs(query(userGroupsRef));
+        const groupCount = userGroupsSnapshot.size;
+        
+        // Check if user has reached the maximum limit of 8 groups
+        if (groupCount >= 8) {
+            alert("You can't create more groups. Maximum limit of 8 groups reached!");
+            loading.value = false;
+            return;
+        }
+        
+        // If under the limit, proceed with group creation
+        const groupCode = generateGroupCode();
+        
+        const newGroup = {
+            name: newGroupName.value,
+            image: imageURL.value,
+            color: selectedColor.value,
+            members: [user.uid],
+            totalSpent: 0,
+            inviteCode: groupCode,
+            hasImage: !!imageURL.value,
+            createdBy: user.uid,
+            createdAt: new Date()
+        };
+
+        // Create group in main Groups collection
         const groupDocRef = await addDoc(collection(db, "Groups"), newGroup);
         const groupId = groupDocRef.id;
 
-        // Close the modal immediately after creating the group.
+        // Close the modal immediately after creating the group
         emit("close");
 
-        // Add a reference to the group in the user's subcollection "Groups".
+        // Add a reference to the group in the user's subcollection "Groups"
         await setDoc(doc(db, "Users", user.uid, "Groups", groupId), {
             name: newGroup.name,
             inviteCode: newGroup.inviteCode,

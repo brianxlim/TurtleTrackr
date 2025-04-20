@@ -27,71 +27,83 @@
       alert("Please enter a group invite code.");
       return;
     }
-  
+
     const user = auth.currentUser;
     if (!user) {
       alert("You must be logged in to join a group.");
       return;
     }
-  
+
     loading.value = true;
-  
+
     try {
+      // Check how many groups the user is already in
+      const userGroupsRef = collection(db, "Users", user.uid, "Groups");
+      const userGroupsSnapshot = await getDocs(query(userGroupsRef));
+      const groupCount = userGroupsSnapshot.size;
+      
+      // Check if user has reached the maximum limit of 8 groups
+      if (groupCount >= 8) {
+        alert("You can't join more groups. Maximum limit of 8 groups reached!");
+        loading.value = false;
+        return;
+      }
+
       const groupQuery = query(
         collection(db, "Groups"),
         where("inviteCode", "==", joinGroupCode.value.trim().toUpperCase())
       );
       const groupSnapshot = await getDocs(groupQuery);
-  
+
       if (groupSnapshot.empty) {
         alert("Invalid invite code. Please try again.");
         loading.value = false;
         return;
       }
-  
+
       const groupDoc = groupSnapshot.docs[0];
       const groupId = groupDoc.id;
       const groupData = groupDoc.data();
-  
+
       // Check if user already in group
       if (groupData.members.includes(user.uid)) {
         alert("You are already a member of this group.");
         loading.value = false;
         return;
       }
-  
+
       // Check if group is full
       if (groupData.members.length >= 8) {
         alert("This group already has the maximum number of members (8).");
         loading.value = false;
         return;
       }
-  
+
       // Proceed to add user
       const userGroupRef = doc(db, "Users", user.uid, "Groups", groupId);
       await updateDoc(groupDoc.ref, {
         members: arrayUnion(user.uid)
       });
-  
+
       await setDoc(userGroupRef, {
         name: groupData.name,
         inviteCode: groupData.inviteCode,
         joinedAt: new Date()
       });
-  
+
       confetti({
         particleCount: 120,
         spread: 100,
         origin: { y: 0.7 },
       });
-  
+
       emit("groupJoined");
       emit("close");
     } catch (err) {
       console.error("Error joining group:", err);
       alert("Error joining group. Please try again.");
     }
-  
+
     joinGroupCode.value = "";
     loading.value = false;
   };
