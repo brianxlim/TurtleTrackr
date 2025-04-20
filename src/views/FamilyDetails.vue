@@ -17,7 +17,7 @@
       </div>
     </div>
 
-  
+
     <div class="month-bar">
       <button class="nav-arrow" @click="prevMonth">«</button>
       <span class="month-title">{{ formattedMonth }}</span>
@@ -26,30 +26,16 @@
     </div>
 
 
-    <FamilyBarChart
-      :members="memberSpendingData"
-      v-if="memberSpendingData.length"
-      @member-click="goToMember"
-      :month="selectedMonth"
-      :selectedCategory="selectedCategory"
-    />
+    <FamilyBarChart :members="memberSpendingData" v-if="memberSpendingData.length" @member-click="goToMember"
+      :month="selectedMonth" :selectedCategory="selectedCategory" />
 
 
     <div>
       <h2 id="highlightTitle">Highlights: </h2>
-      <HighlightCard 
-        v-for="highlight in highlights" 
-        :key="highlight.id" 
-        :title="highlight.Title"
-        :amount="highlight.Amount" 
-        :userName="highlight.UserName" 
-        :date="highlight.Date"
-        :likedBy="highlight.likedBy || []"
-        :dislikedBy="highlight.dislikedBy || []"
-        :groupId="groupId"
-        :postId="highlight.id"
-        @like="handleLike"
-        @dislike="handleDislike" />
+      <HighlightCard v-for="highlight in highlights" :key="highlight.id" :title="highlight.Title"
+        :amount="highlight.Amount" :userName="highlight.UserName" :date="highlight.Date"
+        :likedBy="highlight.likedBy || []" :dislikedBy="highlight.dislikedBy || []" :groupId="groupId"
+        :postId="highlight.id" @like="handleLike" @dislike="handleDislike" />
     </div>
   </div>
 
@@ -64,11 +50,7 @@
     </div>
   </div>
 
-  <InboxPopup
-    v-if="showInbox"
-    :messages="inboxMessages"
-    @close="toggleInbox"
-  />
+  <InboxPopup v-if="showInbox" :messages="inboxMessages" @close="toggleInbox" />
 </template>
 
 <script>
@@ -93,10 +75,13 @@ export default {
     InboxPopup
   },
   data() {
+
     const now = new Date();
-  const defaultMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const defaultMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
     return {
+      totalSpent: 0,
+      totalSpentCalculated: false,
       isUpdating: false,
       groupId: this.$route.params.id,
       group: null,
@@ -106,31 +91,26 @@ export default {
       showInbox: false,
       inboxMessages: [],
       currentUser: null,
-      selectedMemberUid:null,
+      selectedMemberUid: null,
       selectedMonth: defaultMonth,
-    availableMonths: Array.from({ length: 6 }).map((_, i) => {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-    })
+      availableMonths: Array.from({ length: 6 }).map((_, i) => {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      })
     };
   },
   computed: {
-    
-    totalSpent() {
-      return this.memberSpendingData.reduce((sum, member) => {
-        return sum + Object.values(member.categories).reduce((a, b) => a + b, 0);
-      }, 0);
-    },
+
 
     formattedMonth() {
-  const [year, month] = this.selectedMonth.split("-");
-  const date = new Date(year, month - 1);
-  return date.toLocaleString("default", { month: "long", year: "numeric" });
-}
+      const [year, month] = this.selectedMonth.split("-");
+      const date = new Date(year, month - 1);
+      return date.toLocaleString("default", { month: "long", year: "numeric" });
+    }
 
-    
+
   },
-  
+
 
 
 
@@ -140,26 +120,7 @@ export default {
         this.fetchInboxAlerts();
       }
     },
-    totalSpent: {
-      async handler(newTotal) {
-        if (this.isUpdating) return;
-        if (this.group) {
-          const currentTotal = Number(this.group.totalSpent) || 0;
-          if (Math.abs(currentTotal - newTotal) > 0.01) {
-            this.isUpdating = true;
-            try {
-              await updateDoc(doc(db, "Groups", this.groupId), { totalSpent: newTotal });
-            } catch (e) {
-              console.error("Error updating totalSpent:", e);
-            } finally {
-              setTimeout(() => {
-                this.isUpdating = false;
-              }, 400);
-            }
-          }
-        }
-      }
-    }
+  
   },
   methods: {
     async toggleInbox() {
@@ -176,11 +137,11 @@ export default {
     },
 
     goToMember(uid) {
-  console.log("📥 Received click for member uid:", uid);
-  this.selectedMemberUid = uid;
-},
+      console.log("📥 Received click for member uid:", uid);
+      this.selectedMemberUid = uid;
+    },
 
-    
+
     async updateGroupTotal(newTotal) {
       try {
         await updateDoc(doc(db, "Groups", this.groupId), { totalSpent: newTotal });
@@ -234,6 +195,14 @@ export default {
         if (allReady) {
           const updatedData = memberUIDs.map(uid => tempDataMap[uid]);
           this.memberSpendingData = updatedData;
+          if (!this.totalSpentCalculated) {
+            const selectedMonth = this.selectedMonth;
+            this.totalSpent = updatedData.reduce((sum, member) => {
+              const monthData = member.monthlyBreakdown?.[selectedMonth] || {};
+              return sum + Object.values(monthData).reduce((a, b) => a + b, 0);
+            }, 0);
+            this.totalSpentCalculated = true;
+          }
         }
       };
 
@@ -256,35 +225,35 @@ export default {
         };
 
         const expensesUnsub = onSnapshot(collection(db, "Users", uid, "Expenses"), (snap) => {
-  const monthMap = {};
+          const monthMap = {};
 
-  snap.forEach((doc) => {
-    const data = doc.data();
-    const amount = parseFloat(data.Amount) || 0;
-    const category = data.Category || "Others";
-    const date = new Date(data.Date);
-    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+          snap.forEach((doc) => {
+            const data = doc.data();
+            const amount = parseFloat(data.Amount) || 0;
+            const category = data.Category || "Others";
+            const date = new Date(data.Date);
+            const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 
-    if (!monthMap[monthKey]) {
-      monthMap[monthKey] = { Food: 0, Travel: 0, Shopping: 0, Others: 0 };
-    }
+            if (!monthMap[monthKey]) {
+              monthMap[monthKey] = { Food: 0, Travel: 0, Shopping: 0, Others: 0 };
+            }
 
-    if (!monthMap[monthKey][category]) {
-      monthMap[monthKey][category] = 0;
-    }
+            if (!monthMap[monthKey][category]) {
+              monthMap[monthKey][category] = 0;
+            }
 
-    monthMap[monthKey][category] += amount;
-  });
+            monthMap[monthKey][category] += amount;
+          });
 
-  tempDataMap[uid] = {
-    ...(tempDataMap[uid] || {}),
-    uid,
-    name: displayName,
-    monthlyBreakdown: { ...monthMap },
-  };
+          tempDataMap[uid] = {
+            ...(tempDataMap[uid] || {}),
+            uid,
+            name: displayName,
+            monthlyBreakdown: { ...monthMap },
+          };
 
-  updateAllCharts();
-});
+          updateAllCharts();
+        });
 
         const goalsUnsub = onSnapshot(collection(db, "Users", uid, "Goals"), (snap) => {
           snap.forEach(doc => {
@@ -296,7 +265,7 @@ export default {
 
           tempDataMap[uid] = {
             ...(tempDataMap[uid] || {}),
-            uid, 
+            uid,
             name: displayName,
             categories: { ...categoryMap }
           };
@@ -312,21 +281,21 @@ export default {
         alert("You must be logged in to like posts");
         return;
       }
-      
+
       const userId = auth.currentUser.uid;
       const highlightRef = doc(db, "Groups", this.groupId, "Highlights", postId);
-      
+
       try {
         const highlightDoc = await getDoc(highlightRef);
         if (!highlightDoc.exists()) {
           console.error("Highlight not found");
           return;
         }
-        
+
         const highlightData = highlightDoc.data();
         const likedBy = highlightData.likedBy || [];
         const dislikedBy = highlightData.dislikedBy || [];
-        
+
         // Check if user already liked
         if (likedBy.includes(userId)) {
           // User already liked, remove like
@@ -346,27 +315,27 @@ export default {
         console.error("Error handling like:", error);
       }
     },
-    
+
     async handleDislike(postId) {
       if (!auth.currentUser) {
         alert("You must be logged in to dislike posts");
         return;
       }
-      
+
       const userId = auth.currentUser.uid;
       const highlightRef = doc(db, "Groups", this.groupId, "Highlights", postId);
-      
+
       try {
         const highlightDoc = await getDoc(highlightRef);
         if (!highlightDoc.exists()) {
           console.error("Highlight not found");
           return;
         }
-        
+
         const highlightData = highlightDoc.data();
         const likedBy = highlightData.likedBy || [];
         const dislikedBy = highlightData.dislikedBy || [];
-        
+
         // Check if user already disliked
         if (dislikedBy.includes(userId)) {
           // User already disliked, remove dislike
@@ -388,16 +357,16 @@ export default {
     },
 
     prevMonth() {
-  const [year, month] = this.selectedMonth.split("-").map(Number);
-  const prev = new Date(year, month - 2); // month -1 is current, -2 for previous
-  this.selectedMonth = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, "0")}`;
-},
+      const [year, month] = this.selectedMonth.split("-").map(Number);
+      const prev = new Date(year, month - 2); // month -1 is current, -2 for previous
+      this.selectedMonth = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, "0")}`;
+    },
 
-nextMonth() {
-  const [year, month] = this.selectedMonth.split("-").map(Number);
-  const next = new Date(year, month); // month is current, month+1 internally
-  this.selectedMonth = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`;
-} ,
+    nextMonth() {
+      const [year, month] = this.selectedMonth.split("-").map(Number);
+      const next = new Date(year, month); // month is current, month+1 internally
+      this.selectedMonth = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`;
+    },
 
     async confirmLeaveGroup() {
       const confirmed = window.confirm("Are you sure you want to leave this group?");
@@ -434,7 +403,7 @@ nextMonth() {
 
     async fetchInboxAlerts() {
       const now = new Date();
-      const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2,"0")}`;
+      const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
       const monthText = now.toLocaleString("default", { month: "long", year: "numeric" });
 
       this.inboxMessages = [];
@@ -443,9 +412,9 @@ nextMonth() {
         // Fetch alerts from Firestore
         const alertsRef = collection(db, "Groups", this.groupId, "Alerts");
         const alertsSnap = await getDocs(alertsRef);
-        
+
         const processedAlerts = [];
-        
+
         alertsSnap.forEach(doc => {
           const alertData = doc.data();
           if (alertData.alerts && Array.isArray(alertData.alerts)) {
@@ -459,7 +428,7 @@ nextMonth() {
                 limit: alert.amount,
                 originalLimit: alert.originalAmount,
                 newLimit: alert.amount,
-                monthText: alertData.month 
+                monthText: alertData.month
                   ? new Date(`${alertData.month.split('-')[0]}-${alertData.month.split('-')[1]}-01`).toLocaleString("default", { month: "long", year: "numeric" })
                   : monthText,
                 timestamp: alert.timestamp || Date.now(),
@@ -468,7 +437,7 @@ nextMonth() {
             });
           }
         });
-        
+
         // Also process current data to detect new alerts
         for (const uid of this.group.members) {
           const userDoc = await getDoc(doc(db, "Users", uid));
@@ -489,7 +458,7 @@ nextMonth() {
               const existingAlert = processedAlerts.find(
                 a => a.user === userName && a.category === cat.name && a.type === "limit-exceeded"
               );
-              
+
               if (!existingAlert) {
                 processedAlerts.push({
                   id: `current-${uid}-${cat.name}-exceeded`,
@@ -502,16 +471,16 @@ nextMonth() {
                 });
               }
             }
-            
+
             // Add other alert types as needed...
           }
         }
-        
+
         // Sort by timestamp (newest first)
         processedAlerts.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-        
+
         this.inboxMessages = processedAlerts;
-        
+
       } catch (error) {
         console.error("Error fetching inbox alerts:", error);
       }
@@ -672,7 +641,7 @@ li {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0,0,0,0.5);
+  background: rgba(0, 0, 0, 0.5);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -747,5 +716,4 @@ li {
   color: white;
   border-color: #3d5538;
 }
-
 </style>
