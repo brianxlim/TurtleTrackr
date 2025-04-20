@@ -17,7 +17,7 @@
           <div class="form-row">
             <div class="form-group">
               <label for="amount">Amount*</label>
-              <input type="text" id="amount" v-model="formData.amount" required>
+              <input type="number" id="amount" v-model="formData.amount" step="0.01" min="0.01" required>
             </div>
             <div class="form-group">
               <label for="date">Date*</label>
@@ -137,8 +137,14 @@ export default {
         return false;
       }
 
+      const moneyRegex = /^\d+(\.\d{1,2})?$/;
+      if (!moneyRegex.test(this.formData.amount)) {
+        alert("Please enter a valid amount. Up to 2 decimal places only, no letters or symbols.");
+        return false;
+      }
+
       const amount = parseFloat(this.formData.amount);
-      if (isNaN(amount) || amount <= 0) {
+      if (amount <= 0) {
         alert("Please enter a valid amount greater than 0.");
         return false;
       }
@@ -217,6 +223,7 @@ export default {
   align-items: center;
   justify-content: center;
   transition: background-color 0.3s;
+  padding-top: 2px;
 }
 
 .add-button:hover {
