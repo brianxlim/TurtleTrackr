@@ -18,7 +18,11 @@
 
       <div class="right">
         <div class="icon-leave-wrap">
-          <img src="/images/inbox-icon.png" alt="Inbox" class="inbox-icon" @click="toggleInbox" />
+          <div class="inbox-container">
+            <img src="/images/inbox-icon.png" alt="Inbox" class="inbox-icon" @click="toggleInbox" />
+            <div v-if="hasUnreadMessages" class="unread-indicator"></div>
+            <div v-if="isLoadingInbox && !showInbox" class="loading-spinner"></div>
+          </div>
           <button class="back-btn" @click="$router.back()">← Back</button>
           <button class="leave-btn" @click="confirmLeaveGroup">Leave Family</button>
         </div>
@@ -31,19 +35,29 @@
       <button class="nav-arrow" @click="prevMonth">«</button>
       <span class="month-title">{{ formattedMonth }}</span>
       <button class="nav-arrow" @click="nextMonth">»</button>
-
     </div>
 
 
-    <FamilyBarChart :members="memberSpendingData" v-if="memberSpendingData.length" @member-click="goToMember"
-      :month="selectedMonth" />
+    <FamilyBarChart 
+      v-if="memberSpendingData.length"
+      :members="memberSpendingData"
+      @member-click="goToMember"
+      :month="selectedMonth" 
+      :selectedCategory="selectedCategory"
+    />
 
 
-    <div>
+    <div class="highlight-section">
       <h2 id="highlightTitle">Highlights: </h2>
-      <HighlightCard v-for="highlight in highlights" :key="highlight.id" :title="highlight.Title"
-        :amount="highlight.Amount" :userName="highlight.UserName" :date="highlight.Date"
-        :likedBy="highlight.likedBy || []" :dislikedBy="highlight.dislikedBy || []" :groupId="groupId"
+      <HighlightCard 
+        v-for="highlight in highlights"
+        :key="highlight.id"
+        :title="highlight.Title"
+        :amount="highlight.Amount"
+        :userId="highlight.UserId"
+        :date="highlight.Date"
+        :likedBy="highlight.likedBy || []" 
+        :dislikedBy="highlight.dislikedBy || []" :groupId="groupId"
         :postId="highlight.id" @like="handleLike" @dislike="handleDislike" />
     </div>
   </div>
@@ -59,7 +73,8 @@
     </div>
   </div>
 
-  <InboxPopup v-if="showInbox" :messages="inboxMessages" @close="toggleInbox" />
+  <InboxPopup v-if="showInbox" :messages="filteredInboxMessages" :isLoading="isLoadingInbox" @close="toggleInbox"
+    @mark-read="markMessageAsRead" />
 </template>
 
 <script>
@@ -99,6 +114,8 @@ export default {
       memberSpendingData: [],
       showInbox: false,
       inboxMessages: [],
+      readMessageIds: new Set(), // Track read messages
+      isLoadingInbox: false,
       currentUser: null,
       selectedMemberUid: null,
       selectedMonth: defaultMonth,
@@ -109,24 +126,28 @@ export default {
     };
   },
   computed: {
-
-
     formattedMonth() {
       const [year, month] = this.selectedMonth.split("-");
       const date = new Date(year, month - 1);
       return date.toLocaleString("default", { month: "long", year: "numeric" });
+    },
+
+    hasUnreadMessages() {
+      if (!this.inboxMessages || this.inboxMessages.length === 0) return false;
+      return this.inboxMessages.some(msg => !msg.read && !this.readMessageIds.has(msg.id));
+    },
+
+    filteredInboxMessages() {
+      // Filter out messages that have been marked as read locally
+      return this.inboxMessages.filter(msg => !this.readMessageIds.has(msg.id));
     }
-
-
   },
-
-
-
 
   watch: {
     group(newVal) {
-      if (this.showInbox && newVal?.members?.length) {
-        this.fetchInboxAlerts();
+      if (newVal?.members?.length) {
+        // Check for unread messages when group data is loaded
+        this.checkForUnreadMessages();
       }
     },
 
@@ -138,7 +159,6 @@ export default {
         return;
       }
 
-
       this.showInbox = !this.showInbox;
       if (this.showInbox) {
         await this.fetchInboxAlerts();
@@ -149,7 +169,6 @@ export default {
       console.log("📥 Received click for member uid:", uid);
       this.selectedMemberUid = uid;
     },
-
 
     async updateGroupTotal(newTotal) {
       try {
@@ -176,6 +195,40 @@ export default {
           console.error("Group not found.");
         }
       });
+    },
+
+    async checkForUnreadMessages() {
+      // This method just checks if there are unread messages without loading all messages
+      if (!auth.currentUser) return;
+
+      const currentUserId = auth.currentUser.uid;
+
+      try {
+        this.isLoadingInbox = true;
+        const alertsRef = collection(db, "Groups", this.groupId, "Alerts");
+        const alertsSnap = await getDocs(alertsRef);
+
+        // Check if any alert has unread messages for current user
+        let hasUnread = false;
+        for (const doc of alertsSnap.docs) {
+          const alertData = doc.data();
+          if (alertData.alerts && Array.isArray(alertData.alerts)) {
+            const unreadExists = alertData.alerts.some(alert =>
+              !Array.isArray(alert.readBy) || !alert.readBy.includes(currentUserId)
+            );
+
+            if (unreadExists) {
+              hasUnread = true;
+              break;
+            }
+          }
+        }
+
+        this.isLoadingInbox = false;
+      } catch (error) {
+        console.error("Error checking for unread messages:", error);
+        this.isLoadingInbox = false;
+      }
     },
 
     async fetchHighlights() {
@@ -282,7 +335,6 @@ export default {
             name: displayName,
             categories: { ...categoryMap }
           };
-
 
           updateAllCharts();
         });
@@ -419,9 +471,17 @@ export default {
       const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
       const monthText = now.toLocaleString("default", { month: "long", year: "numeric" });
 
-      this.inboxMessages = [];
+      this.isLoadingInbox = true;
 
       try {
+        if (!auth.currentUser) {
+          console.warn("User not logged in. Cannot fetch inbox alerts.");
+          this.isLoadingInbox = false;
+          return;
+        }
+
+        const currentUserId = auth.currentUser.uid;
+
         // Fetch alerts from Firestore
         const alertsRef = collection(db, "Groups", this.groupId, "Alerts");
         const alertsSnap = await getDocs(alertsRef);
@@ -432,92 +492,247 @@ export default {
           const alertData = doc.data();
           if (alertData.alerts && Array.isArray(alertData.alerts)) {
             alertData.alerts.forEach(alert => {
-              // Create a properly formatted message object
+              // Format month text properly
+              let formattedMonthText = monthText;
+              if (alertData.month) {
+                try {
+                  const [alertYear, alertMonth] = alertData.month.split('-').map(Number);
+                  if (!isNaN(alertYear) && !isNaN(alertMonth) && alertMonth >= 1 && alertMonth <= 12) {
+                    const monthDate = new Date(alertYear, alertMonth - 1);
+                    formattedMonthText = monthDate.toLocaleString("default", { month: "long", year: "numeric" });
+                  }
+                } catch (e) {
+                  console.error("Error formatting month:", e);
+                }
+              }
+
+              // Skip already locally marked as read messages
+              const alertId = `${doc.id}-${alert.category || 'unknown'}-${alert.type || 'unknown'}`;
+              if (this.readMessageIds.has(alertId)) {
+                return;
+              }
+
+              // Create a properly formatted message object with read status
+              const isRead = Array.isArray(alert.readBy) && alert.readBy.includes(currentUserId);
+
               processedAlerts.push({
-                id: `${doc.id}-${alert.category}-${alert.type}`,
+                id: alertId,
                 user: alertData.userName || "Unknown User",
                 category: alert.category || "Unknown",
                 type: alert.type || "unknown",
-                limit: alert.amount,
-                originalLimit: alert.originalAmount,
-                newLimit: alert.amount,
-                monthText: alertData.month
-                  ? new Date(`${alertData.month.split('-')[0]}-${alertData.month.split('-')[1]}-01`).toLocaleString("default", { month: "long", year: "numeric" })
-                  : monthText,
-                timestamp: alert.timestamp || Date.now(),
-                read: (alert.readBy || []).includes(auth.currentUser?.uid)
+                limit: typeof alert.amount === 'number' ? alert.amount : 0,
+                originalLimit: typeof alert.originalAmount === 'number' ? alert.originalAmount : 0,
+                newLimit: typeof alert.amount === 'number' ? alert.amount : 0,
+                monthText: formattedMonthText,
+                read: isRead,
+                docId: doc.id
               });
             });
           }
         });
 
-        // Also process current data to detect new alerts
-        for (const uid of this.group.members) {
-          const userDoc = await getDoc(doc(db, "Users", uid));
-          const userName = userDoc.exists() ? userDoc.data().displayName || "Unnamed User" : "Unknown";
+        // Process current data to detect new limit exceedances
+        if (this.group && Array.isArray(this.group.members)) {
+          for (const uid of this.group.members) {
+            try {
+              const userDoc = await getDoc(doc(db, "Users", uid));
+              const userName = userDoc.exists() ? userDoc.data().displayName || "Unnamed User" : "Unknown";
 
-          const goalRef = doc(db, "Users", uid, "Goals", monthKey);
-          const goalSnap = await getDoc(goalRef);
-          if (!goalSnap.exists()) continue;
+              const goalRef = doc(db, "Users", uid, "Goals", monthKey);
+              const goalSnap = await getDoc(goalRef);
+              if (!goalSnap.exists()) continue;
 
-          const goals = goalSnap.data();
-          if (!goals?.categories) continue;
+              const goals = goalSnap.data();
+              if (!goals?.categories || !Array.isArray(goals.categories)) continue;
 
-          // Check each category for potential alerts
-          for (const cat of goals.categories) {
-            // Check for exceeded limits
-            if (cat.spent > cat.setAmount) {
-              // Add exceeded limit alert if not already in processedAlerts
-              const existingAlert = processedAlerts.find(
-                a => a.user === userName && a.category === cat.name && a.type === "limit-exceeded"
-              );
+              // Find the last time we checked for this user's categories
+              const userAlertsRef = doc(db, "Groups", this.groupId, "AlertsTracking", uid);
+              const userAlertsSnap = await getDoc(userAlertsRef);
+              const lastChecked = userAlertsSnap.exists() ? userAlertsSnap.data().lastChecked || {} : {};
+              const updatedLastChecked = { ...lastChecked };
 
-              if (!existingAlert) {
-                processedAlerts.push({
-                  id: `current-${uid}-${cat.name}-exceeded`,
-                  user: userName,
-                  category: cat.name,
-                  type: "limit-exceeded",
-                  limit: cat.setAmount,
-                  monthText,
-                  timestamp: Date.now()
-                });
+              // Check each category for potential alerts
+              // Inside the fetchInboxAlerts method, replace the check for limit exceedance with this:
+              for (const cat of goals.categories) {
+                if (!cat || typeof cat !== 'object') continue;
+
+                // Check if limit was exceeded since our last check
+                const categoryLastChecked = lastChecked[cat.name] || 0;
+
+                // Only create an alert if spending exceeds the limit
+                if (cat.spent > cat.setAmount) {
+                  // See if we already have this alert in our processed list
+                  const alertId = `current-${uid}-${cat.name || 'unknown'}-exceeded`;
+
+                  // Skip if already marked as read locally
+                  if (this.readMessageIds.has(alertId)) {
+                    continue;
+                  }
+
+                  const existingAlert = processedAlerts.find(
+                    a => a.user === userName && a.category === cat.name && a.type === "limit-exceeded"
+                  );
+
+                  if (!existingAlert) {
+                    // This is a new limit exceedance
+                    const now = Date.now();
+                    processedAlerts.push({
+                      id: alertId,
+                      user: userName,
+                      category: cat.name || "Unknown",
+                      type: "limit-exceeded",
+                      limit: typeof cat.setAmount === 'number' ? cat.setAmount : 0,
+                      monthText,
+                      read: false
+                    });
+
+                    // Save the alert to Firestore for future reference
+                    try {
+                      const alertsDocRef = doc(db, "Groups", this.groupId, "Alerts", `user-${uid}-${Date.now()}`);
+                      await setDoc(alertsDocRef, {
+                        userName,
+                        userId: uid,
+                        month: monthKey,
+                        createdAt: now,
+                        alerts: [{
+                          category: cat.name,
+                          type: "limit-exceeded",
+                          amount: cat.setAmount,
+                          timestamp: now,
+                          readBy: []
+                        }]
+                      });
+                    } catch (e) {
+                      console.error("Error saving new alert to Firestore:", e);
+                    }
+                  }
+
+                  // Update the last checked time for this category
+                  updatedLastChecked[cat.name] = Date.now();
+                }
               }
-            }
 
-            // Add other alert types as needed...
+              // Update the last checked timestamps in Firestore
+              try {
+                await setDoc(userAlertsRef, { lastChecked: updatedLastChecked }, { merge: true });
+              } catch (e) {
+                console.error("Error updating alerts tracking:", e);
+              }
+            } catch (error) {
+              console.error(`Error processing alerts for member ${uid}:`, error);
+            }
           }
+        } else {
+          console.warn("Group or members not available for alert processing");
         }
 
-        // Sort by timestamp (newest first)
-        processedAlerts.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+        // Sort by read status (unread first)
+        processedAlerts.sort((a, b) => {
+          if (a.read === b.read) return 0;
+          return a.read ? 1 : -1;
+        });
 
         this.inboxMessages = processedAlerts;
+        this.isLoadingInbox = false;
 
       } catch (error) {
         console.error("Error fetching inbox alerts:", error);
+        this.isLoadingInbox = false;
+      }
+    },
+
+    // Method to mark a single message as read (called from InboxPopup)
+    async markMessageAsRead(message) {
+      if (!auth.currentUser || message.read) return;
+
+      const currentUserId = auth.currentUser.uid;
+
+      try {
+        // First, add to local readMessageIds to remove it from UI immediately
+        this.readMessageIds.add(message.id);
+
+        // Check if it's a message stored in Firestore that we need to update
+        if (message.docId) {
+          const alertRef = doc(db, "Groups", this.groupId, "Alerts", message.docId);
+          const alertDoc = await getDoc(alertRef);
+
+          if (alertDoc.exists()) {
+            const alertData = alertDoc.data();
+            if (alertData.alerts && Array.isArray(alertData.alerts)) {
+              // Find the specific alert within the document
+              const updatedAlerts = alertData.alerts.map(alert => {
+                if (alert.category === message.category && alert.type === message.type) {
+                  // Add current user to readBy array
+                  const readBy = Array.isArray(alert.readBy) ? [...alert.readBy] : [];
+                  if (!readBy.includes(currentUserId)) {
+                    readBy.push(currentUserId);
+                  }
+                  return { ...alert, readBy };
+                }
+                return alert;
+              });
+
+              // Update the document with marked-as-read alert
+              await updateDoc(alertRef, { alerts: updatedAlerts });
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error marking message as read:", error);
       }
     }
   },
   mounted() {
     this.fetchGroupDetails();
     this.fetchHighlights();
+    // Initial check for unread messages
+    if (auth.currentUser) {
+      this.checkForUnreadMessages();
+    }
   }
-
 };
-
-
-
-
 </script>
 
 <style scoped>
+/* Add these new styles for the unread indicator and loading spinner */
+.inbox-container {
+  position: relative;
+  display: inline-block;
+}
+
+.unread-indicator {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 10px;
+  height: 10px;
+  background-color: #ff4d4f;
+  border-radius: 50%;
+}
+
+.loading-spinner {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(0, 0, 0, 0.1);
+  border-top-color: #3498db;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .family-details {
   max-width: 1000px;
-  margin: 0 auto;
+  margin: 1rem auto;
   text-align: center;
   padding: 20px;
-  margin-top: 1%;
   border-radius: 10px;
   box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
 }
