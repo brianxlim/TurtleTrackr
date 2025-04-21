@@ -105,6 +105,7 @@
     border-radius: 1rem;
     align-items: center;
     justify-content: space-between;
+    margin-bottom: 10px;
   }
   
   .user-info {
