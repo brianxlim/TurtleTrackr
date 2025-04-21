@@ -112,7 +112,7 @@
   };
   
   const deleteAccount = async () => {
-    const confirmDelete = confirm("Are you sure you want to delete your account and all data?");
+    const confirmDelete = confirm("Are you sure you want to delete your account and all data? This action cannot be undone.");
     if (!confirmDelete) return;
   
     const user = auth.currentUser;
