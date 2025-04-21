@@ -132,6 +132,13 @@ export default {
       };
     },
     validateForm() {
+
+      const amount = parseFloat(this.formData.amount);
+      if (amount <= 0) {
+        alert("Please enter a valid amount greater than 0.");
+        return false;
+      }
+
       if (!this.formData.title || !this.formData.amount || !this.formData.date || !this.formData.category) {
         alert("Please fill in all required fields: Title, Amount, Date, and Category.");
         return false;
@@ -140,12 +147,6 @@ export default {
       const moneyRegex = /^\d+(\.\d{1,2})?$/;
       if (!moneyRegex.test(this.formData.amount)) {
         alert("Please enter a valid amount. Up to 2 decimal places only, no letters or symbols.");
-        return false;
-      }
-
-      const amount = parseFloat(this.formData.amount);
-      if (amount <= 0) {
-        alert("Please enter a valid amount greater than 0.");
         return false;
       }
 
