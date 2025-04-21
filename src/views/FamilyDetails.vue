@@ -26,15 +26,26 @@
     </div>
 
 
-    <FamilyBarChart :members="memberSpendingData" v-if="memberSpendingData.length" @member-click="goToMember"
-      :month="selectedMonth" :selectedCategory="selectedCategory" />
+    <FamilyBarChart 
+      v-if="memberSpendingData.length"
+      :members="memberSpendingData"
+      @member-click="goToMember"
+      :month="selectedMonth" 
+      :selectedCategory="selectedCategory"
+    />
 
 
-    <div>
+    <div class="highlight-section">
       <h2 id="highlightTitle">Highlights: </h2>
-      <HighlightCard v-for="highlight in highlights" :key="highlight.id" :title="highlight.Title"
-        :amount="highlight.Amount" :userName="highlight.UserName" :date="highlight.Date"
-        :likedBy="highlight.likedBy || []" :dislikedBy="highlight.dislikedBy || []" :groupId="groupId"
+      <HighlightCard 
+        v-for="highlight in highlights"
+        :key="highlight.id"
+        :title="highlight.Title"
+        :amount="highlight.Amount"
+        :userId="highlight.UserId"
+        :date="highlight.Date"
+        :likedBy="highlight.likedBy || []" 
+        :dislikedBy="highlight.dislikedBy || []" :groupId="groupId"
         :postId="highlight.id" @like="handleLike" @dislike="handleDislike" />
     </div>
   </div>
@@ -492,19 +503,20 @@ export default {
   }
 
 };
-
-
-
-
 </script>
 
 <style scoped>
+.highlight-section {
+  display: grid;
+  grid-column: 1;
+  gap: 1rem;
+}
+
 .family-details {
   max-width: 1000px;
-  margin: 0 auto;
+  margin: 1rem auto;
   text-align: center;
   padding: 20px;
-  margin-top: 1%;
   border-radius: 10px;
   box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
 }

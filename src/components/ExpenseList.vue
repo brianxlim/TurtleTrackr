@@ -1,6 +1,6 @@
 <template>
   <div class="expense-list">
-    
+    <!-- Sort Options -->
     <div class="sort-options">
       <label for="sortBy">Sort By:</label>
       <select v-model="sortOption" @change="sortExpenses" class="sort-select">
@@ -11,38 +11,46 @@
       </select>
     </div>
 
+    <!-- Loading Indicator -->
     <div v-if="loading" class="loading">
       <i class="pi pi-spin pi-spinner" style="font-size: 1rem"></i>
     </div>
 
+    <!-- Empty State -->
     <div v-if="!loading && expenses.length === 0" class="no-history">
       No history available.
       <span v-if="isUser">Start adding your expenses now!</span>
       <span v-else>This user does not have any expenses.</span>
     </div>
-    
+
+    <!-- Expenses List -->
     <div v-else>
-      <!-- When sorting by amount, show flat list -->
+      <!-- Flat List if sorting by amount -->
       <div v-if="sortOption.includes('amount')">
-        <ExpenseCard 
-          v-for="expense in paginatedExpenses" 
-          :key="expense.id" 
+        <ExpenseCard
+          v-for="expense in paginatedExpenses"
+          :key="expense.id"
           :expense="expense"
-          @delete-expense="deleteExpense" 
-          @edit-expense="openModalForEditing" 
+          :isUser="isUser"
+          @delete-expense="deleteExpense"
+          @edit-expense="openModalForEditing"
         />
       </div>
-      
-      <!-- When sorting by date, show with daily grouping -->
+
+      <!-- Grouped by Date if sorting by date -->
       <div v-else>
-        <div v-for="(dateGroup, date) in paginatedDailyGroupedExpenses" :key="date" class="date-group">
+        <div
+          v-for="(group, date) in paginatedDailyGroupedExpenses"
+          :key="date"
+          class="date-group"
+        >
           <div class="date-header">{{ formatDateHeader(date) }}</div>
-          
           <div class="expense-cards">
             <ExpenseCard
-              v-for="expense in dateGroup"
+              v-for="expense in group"
               :key="expense.id"
               :expense="expense"
+              :is-user="isUser"
               @delete-expense="deleteExpense"
               @edit-expense="openModalForEditing"
             />
@@ -57,353 +65,239 @@
       <span>Page {{ currentPage }} of {{ totalPages }}</span>
       <button @click="changePage(currentPage + 1)" :disabled="currentPage === totalPages">Next</button>
     </div>
-  </div>
 
-  <!-- Expense Modal -->
-  <div v-if="isModalOpen" class="modal-overlay" @click.self="closeModal">
-    <div class="modal-content">
-      <form @submit.prevent="saveExpense">
-        <!-- Title -->
-        <div class="form-group">
-          <label for="title">Title*</label>
-          <input type="text" id="title" v-model="formData.title" required />
-        </div>
+    <!-- Expense Modal -->
+    <div v-if="isModalOpen" class="modal-overlay" @click.self="closeModal">
+      <div class="modal-content">
+        <!-- Form for Adding/Editing Expense -->
+        <form @submit.prevent="saveExpense">
+          <!-- Title -->
+          <div class="form-group">
+            <label for="title">Title*</label>
+            <input id="title" v-model="formData.title" required />
+          </div>
 
-        <!-- Amount & Date -->
-        <div class="form-row">
-          <div class="form-group">
-            <label for="amount">Amount*</label>
-            <input type="text" id="amount" v-model="formData.amount" required />
+          <!-- Amount & Date -->
+          <div class="form-row">
+            <div class="form-group">
+              <label for="amount">Amount*</label>
+              <input id="amount" v-model="formData.amount" required />
+            </div>
+            <div class="form-group">
+              <label for="date">Date*</label>
+              <input id="date" type="date" v-model="formData.date" :max="maxDate" required />
+            </div>
           </div>
-          <div class="form-group">
-            <label for="date">Date*</label>
-            <input type="date" id="date" v-model="formData.date" :max="maxDate" required />
-          </div>
-        </div>
 
-        <!-- Category & Highlights -->
-        <div class="form-row">
-          <div class="form-group">
-            <label for="category">Category*</label>
-            <select id="category" v-model="formData.category" required>
-              <option value="" disabled></option>
-              <option value="Food">Food</option>
-              <option value="Travel">Travel</option>
-              <option value="Shopping">Shopping</option>
-              <option value="Others">Others</option>
-            </select>
+          <!-- Category & Highlights -->
+          <div class="form-row">
+            <div class="form-group">
+              <label for="category">Category*</label>
+              <select id="category" v-model="formData.category" required>
+                <option value="" disabled></option>
+                <option value="Food">Food</option>
+                <option value="Travel">Travel</option>
+                <option value="Shopping">Shopping</option>
+                <option value="Others">Others</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="highlights">Send Highlights to:</label>
+              <input id="highlights" v-model="formData.highlights" placeholder="Optional" />
+            </div>
           </div>
-          <div class="form-group">
-            <label for="highlights">Send Highlights to:</label>
-            <input type="text" id="highlights" v-model="formData.highlights" placeholder="Optional" />
-          </div>
-        </div>
 
-        <!-- Buttons -->
-        <div class="button-group">
-          <button type="submit" class="add-expense">Add</button>
-          <button type="button" @click="closeModal" class="close-button">
-            Cancel
-          </button>
-        </div>
-      </form>
+          <!-- Buttons -->
+          <div class="button-group">
+            <button type="submit" class="add-expense">Add</button>
+            <button type="button" class="close-button" @click="closeModal">Cancel</button>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
 </template>
 
-<script>
-import { collection, getDocs, query, orderBy, deleteDoc, doc, addDoc, updateDoc } from "firebase/firestore";
-import { db, auth } from "@/firebase";
-import ExpenseCard from "./ExpenseCard.vue";
+<script setup>
+import { ref, computed, watch, onMounted } from 'vue';
+import { collection, getDocs, query, orderBy, deleteDoc, doc, addDoc, updateDoc } from 'firebase/firestore';
+import { auth, db } from '@/firebase';
+import ExpenseCard from './ExpenseCard.vue';
 
-export default {
-  components: {
-    ExpenseCard
-  },
-  props: {
-    uid: {
-      type: String,
-      required: true,
-    },
-  },
-  data() {
-    return {
-      loading: false,
-      isUser: this.uid === auth.currentUser.uid,
-      sortOption: "date-desc",
-      expenses: [], // All fetched expenses
-      paginatedExpenses: [], // Paginated expenses for current page
-      isModalOpen: false,
-      formData: {
-        id: "",
-        title: "",
-        amount: "",
-        date: "",
-        category: "",
-        highlights: "",
-      },
-      today: new Date().toISOString().split("T")[0],
-      maxDate: this.today,
-      itemsPerPage: 15, // Number of items per page
-      currentPage: 1, // Current page number
-    };
-  },
-  computed: {
-    // Group expenses by date
-    dailyGroupedExpenses() {
-      return this.expenses.reduce((acc, expense) => {
-        const date = expense.Date.split("T")[0];
-        if (!acc[date]) {
-          acc[date] = [];
-        }
-        acc[date].push(expense);
-        return acc;
-      }, {});
-    },
-    
-    // Paginated daily grouped expenses
-    paginatedDailyGroupedExpenses() {
-      // Create an object to hold paginated groups
-      const result = {};
-      
-      // Get dates in order of current sort option
-      let dates = Object.keys(this.dailyGroupedExpenses);
-      if (this.sortOption === 'date-desc') {
-        dates.sort((a, b) => b.localeCompare(a));
-      } else {
-        dates.sort((a, b) => a.localeCompare(b));
-      }
-      
-      let itemsToSkip = (this.currentPage - 1) * this.itemsPerPage;
-      let itemsToTake = this.itemsPerPage;
-      let itemsAdded = 0;
-      
-      // Process each date
-      for (const date of dates) {
-        if (itemsToTake <= 0) break;
-        
-        const expenses = this.dailyGroupedExpenses[date];
-        
-        // Skip expenses if needed for pagination
-        if (itemsToSkip >= expenses.length) {
-          itemsToSkip -= expenses.length;
-          continue;
-        }
-        
-        // Add partial or complete date group
-        if (itemsToSkip > 0) {
-          // Take a slice of the expenses
-          result[date] = expenses.slice(itemsToSkip);
-          itemsAdded += (expenses.length - itemsToSkip);
-          itemsToTake -= (expenses.length - itemsToSkip);
-          itemsToSkip = 0;
-        } else {
-          // Take all expenses for this date or what's left for the page
-          const toTake = Math.min(expenses.length, itemsToTake);
-          result[date] = expenses.slice(0, toTake);
-          itemsAdded += toTake;
-          itemsToTake -= toTake;
-        }
-      }
-      
-      return result;
-    },
-    
-    totalPages() {
-      if (this.sortOption.includes('amount')) {
-        return Math.ceil(this.expenses.length / this.itemsPerPage);
-      } else {
-        // Count total expenses across all groups
-        const totalItems = this.expenses.length;
-        return Math.ceil(totalItems / this.itemsPerPage);
-      }
-    },
-  },
-  watch: {
-    expenses: "updatePaginatedExpenses",
-    currentPage: "updatePaginatedExpenses",
-    sortOption: "sortExpenses",
-  },
-  methods: {
-    async fetchUserExpenses() {
-      this.loading = true;
-      this.currentPage = 1; // Reset to first page when fetching expenses
-      try {
-        const q = query(
-          collection(db, "Users", this.uid, "Expenses"),
-          orderBy("Date", "desc")
-        );
-        const snapshot = await getDocs(q);
-        this.expenses = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        console.log("Fetched Expenses:", this.expenses);
-        this.updatePaginatedExpenses();
-        this.sortExpenses();
-      } catch (error) {
-        console.error("Error fetching expenses:", error);
-      } finally {
-        this.loading = false;
-      }
-    },
+// Props
+const props = defineProps({
+  uid: { type: String, required: true }
+});
 
-    sortExpenses() {
-      console.log("Sorting Expenses by:", this.sortOption);
-      switch (this.sortOption) {
-        case "date-asc":
-          this.expenses.sort((a, b) => new Date(a.Date) - new Date(b.Date));
-          break;
-        case "date-desc":
-          this.expenses.sort((a, b) => new Date(b.Date) - new Date(a.Date));
-          break;
-        case "amount-asc":
-          this.expenses.sort((a, b) => parseFloat(a.Amount) - parseFloat(b.Amount));
-          break;
-        case "amount-desc":
-          this.expenses.sort((a, b) => parseFloat(b.Amount) - parseFloat(a.Amount));
-          break;
-        default:
-          break;
-      }
-      this.currentPage = 1; // Reset to first page when sorting changes
-      this.updatePaginatedExpenses();
-    },
+// Determine if viewing own expenses
+const isUser = computed(() => auth.currentUser?.uid === props.uid);
 
-    updatePaginatedExpenses() {
-      if (this.sortOption.includes("amount")) {
-        const start = (this.currentPage - 1) * this.itemsPerPage;
-        const end = start + this.itemsPerPage;
-        this.paginatedExpenses = this.expenses.slice(start, end);
-      }
-      // For date grouping, we use the computed paginatedDailyGroupedExpenses
-    },
+// Reactive state
+const loading = ref(false);
+const sortOption = ref('date-desc');
+const expenses = ref([]);
+const paginatedExpenses = ref([]);
+const isModalOpen = ref(false);
+const formData = ref({ id: '', title: '', amount: '', date: '', category: '', highlights: '' });
+const maxDate = ref(new Date().toISOString().split('T')[0]);
+const itemsPerPage = ref(15);
+const currentPage = ref(1);
 
-    async deleteExpense(expense) {
-      if (!this.uid) return;
-      if (confirm(`Are you sure you want to delete "${expense.Title}"?`)) {
-        console.log("Deleting expense:", expense);
-        try {
-          await deleteDoc(doc(db, "Users", this.uid, "Expenses", expense.id));
-          this.expenses = this.expenses.filter((e) => e.id !== expense.id);
+// Computed groupings
+const dailyGroupedExpenses = computed(() => {
+  return expenses.value.reduce((acc, e) => {
+    const d = e.Date.split('T')[0];
+    (acc[d] = acc[d] || []).push(e);
+    return acc;
+  }, {});
+});
 
-          // Re-fetch expenses to refresh the list
-          await this.fetchUserExpenses();
-        } catch (error) {
-          console.error("Error deleting expense:", error);
-        }
-      }
-    },
+const paginatedDailyGroupedExpenses = computed(() => {
+  const result = {};
+  const dates = Object.keys(dailyGroupedExpenses.value).sort((a, b) =>
+    sortOption.value === 'date-desc' ? b.localeCompare(a) : a.localeCompare(b)
+  );
+  let skip = (currentPage.value - 1) * itemsPerPage.value;
+  let take = itemsPerPage.value;
+  for (const d of dates) {
+    if (take <= 0) break;
+    const group = dailyGroupedExpenses.value[d];
+    if (skip >= group.length) { skip -= group.length; continue; }
+    const chunk = group.slice(skip, skip + take);
+    result[d] = chunk;
+    take -= chunk.length;
+    skip = 0;
+  }
+  return result;
+});
 
-    openModalForEditing(expense) {
-      this.formData = {
-        id: expense.id || "",
-        title: expense.Title || "",
-        amount: expense.Amount || "",
-        date: expense.Date ? expense.Date.split("T")[0] : "",
-        category: expense.Category || "",
-        highlights: expense.Highlights || "",
-      };
-      this.isModalOpen = true;
-    },
+const totalPages = computed(() =>
+  sortOption.value.includes('amount')
+    ? Math.ceil(expenses.value.length / itemsPerPage.value)
+    : Math.ceil(expenses.value.length / itemsPerPage.value)
+);
 
-    closeModal() {
-      this.isModalOpen = false;
-      this.resetForm();
-    },
+// Fetch expenses from Firestore
+async function fetchUserExpenses() {
+  loading.value = true;
+  currentPage.value = 1;
+  try {
+    const q = query(
+      collection(db, 'Users', props.uid, 'Expenses'),
+      orderBy('Date', 'desc')
+    );
+    const snap = await getDocs(q);
+    expenses.value = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (err) {
+    console.error(err);
+  } finally {
+    loading.value = false;
+    updatePaginatedExpenses();
+  }
+}
 
-    resetForm() {
-      this.formData = {
-        id: "",
-        title: "",
-        amount: "",
-        date: "",
-        category: "",
-        highlights: "",
-      };
-    },
+// Sort and paginate
+function sortExpenses() {
+  const opt = sortOption.value;
+  expenses.value.sort((a, b) => {
+    if (opt === 'date-asc') return new Date(a.Date) - new Date(b.Date);
+    if (opt === 'date-desc') return new Date(b.Date) - new Date(a.Date);
+    return opt.includes('asc')
+      ? parseFloat(a.Amount) - parseFloat(b.Amount)
+      : parseFloat(b.Amount) - parseFloat(a.Amount);
+  });
+  currentPage.value = 1;
+  updatePaginatedExpenses();
+}
 
-    validateForm() {
-      if (
-        !this.formData.title ||
-        !this.formData.amount ||
-        !this.formData.date ||
-        !this.formData.category
-      ) {
-        alert("Please fill in all required fields: Title, Amount, Date, and Category.");
-        return false;
-      }
+function updatePaginatedExpenses() {
+  if (sortOption.value.includes('amount')) {
+    const start = (currentPage.value - 1) * itemsPerPage.value;
+    paginatedExpenses.value = expenses.value.slice(start, start + itemsPerPage.value);
+  }
+}
 
-      const amt = parseFloat(this.formData.amount);
-      if (isNaN(amt) || amt <= 0) {
-        alert("Please enter a valid amount greater than 0.");
-        return false;
-      }
-      if (this.formData.date > this.maxDate) {
-        alert("You cannot log an expense for a future date.");
-        return false;
-      }
-      return true;
-    },
+// CRUD operations
+async function deleteExpense(exp) {
+  if (!isUser.value) return;
+  if (!confirm(`Delete "${exp.Title}"?`)) return;
+  try {
+    await deleteDoc(doc(db, 'Users', props.uid, 'Expenses', exp.id));
+    await fetchUserExpenses();
+  } catch (err) {
+    console.error(err);
+  }
+}
 
-    async saveExpense() {
-      if (!this.uid) return;
-      if (!this.validateForm()) return;
+function openModalForEditing(exp) {
+  formData.value = {
+    id: exp.id,
+    title: exp.Title,
+    amount: exp.Amount,
+    date: exp.Date.split('T')[0],
+    category: exp.Category,
+    highlights: exp.Highlights || ''
+  };
+  isModalOpen.value = true;
+}
 
-      const { id, title, amount, date, category, highlights } = this.formData;
-      try {
-        console.log("Saving Expense:", { id, title, amount, date, category, highlights });
-        if (id) {
-          const expenseRef = doc(db, "Users", this.uid, "Expenses", id);
-          await updateDoc(expenseRef, {
-            Title: title,
-            Amount: parseFloat(amount),
-            Date: date,
-            Category: category,
-            Highlights: highlights ?? "",
-            createdAt: new Date(),
-          });
-        } else {
-          await addDoc(collection(db, "Users", this.uid, "Expenses"), {
-            Title: title,
-            Amount: parseFloat(amount),
-            Date: date,
-            Category: category,
-            Highlights: highlights ?? "",
-            createdAt: new Date(),
-          });
-        }
-        console.log("Expense saved successfully.");
-        await this.fetchUserExpenses();
-        this.closeModal();
-      } catch (error) {
-        console.error("Error saving expense:", error);
-      }
-    },
+function closeModal() {
+  isModalOpen.value = false;
+  formData.value = { id: '', title: '', amount: '', date: '', category: '', highlights: '' };
+}
 
-    formatDateHeader(date) {
-      const dateObj = new Date(date);
-      return dateObj.toLocaleDateString("en-US", {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-        year: "numeric"
+async function saveExpense() {
+  if (!isUser.value) return;
+  const f = formData.value;
+  if (!f.title || !f.amount || !f.date || !f.category) {
+    alert('All fields are required.');
+    return;
+  }
+  try {
+    if (f.id) {
+      await updateDoc(doc(db, 'Users', props.uid, 'Expenses', f.id), {
+        Title: f.title,
+        Amount: parseFloat(f.amount),
+        Date: f.date,
+        Category: f.category,
+        Highlights: f.highlights,
+        createdAt: new Date()
       });
-    },
+    } else {
+      await addDoc(collection(db, 'Users', props.uid, 'Expenses'), {
+        Title: f.title,
+        Amount: parseFloat(f.amount),
+        Date: f.date,
+        Category: f.category,
+        Highlights: f.highlights,
+        createdAt: new Date()
+      });
+    }
+    await fetchUserExpenses();
+    closeModal();
+  } catch (err) {
+    console.error(err);
+  }
+}
 
-    changePage(newPage) {
-      if (newPage > 0 && newPage <= this.totalPages) {
-        this.currentPage = newPage;
-        this.updatePaginatedExpenses();
-      }
-    },
-  },
-  mounted() {
-    this.fetchUserExpenses();
-  },
-};
+function formatDateHeader(d) {
+  return new Date(d).toLocaleDateString('en-US', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
+}
+
+function changePage(page) {
+  if (page < 1 || page > totalPages.value) return;
+  currentPage.value = page;
+  updatePaginatedExpenses();
+}
+
+// Lifecycle
+onMounted(fetchUserExpenses);
 </script>
-
 
 <style scoped>
 .loading {
