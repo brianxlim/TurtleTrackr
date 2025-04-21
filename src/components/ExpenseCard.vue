@@ -2,12 +2,17 @@
     <div :class="['expense-card', categoryClass]">
         <div class="expense-header">
             <h3 class="expense-title">{{ expense.Title }}</h3>
-            <span class="expense-amount">- SGD {{ formatAmount(expense.Amount) }} <button @click.stop="toggleMenu"
-                    ref="menuButton" class="options-btn">></button>
+            <span class="expense-amount">- SGD {{ formatAmount(expense.Amount) }} 
+                <button
+                    v-if="isUser"
+                    @click.stop="toggleMenu"
+                    ref="menuButton"
+                    class="options-btn">>
+                </button>
             </span>
         </div>
         <p class="expense-date">{{ formatDate(expense.Date) }}</p>
-        <div v-if="showMenu" class="dropdown-menu" :style="menuStyle" @click.stop>
+        <div v-if="showMenu & isUser" class="dropdown-menu" :style="menuStyle" @click.stop>
             <button @click="openModalForEditing">Edit</button>
             <button @click="deleteExpense">Delete</button>
         </div>
@@ -18,6 +23,7 @@
 export default {
     props: {
         expense: Object,
+        isUser: Boolean,
     },
     data() {
         return {
