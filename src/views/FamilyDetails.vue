@@ -2,10 +2,19 @@
   <div v-if="group" class="family-details">
     <div class="group-header-box">
       <div class="left">
-        <h2>{{ group.name }}</h2>
-        <p class="subtext">{{ Object.values(memberDisplayNames).join(", ") }}</p>
-        <p class="group-id">Group ID: {{ group.inviteCode }}</p>
-      </div>
+  <template v-if="headerReady">
+    <h2>{{ group.name }}</h2>
+    <p class="subtext">{{ Object.values(memberDisplayNames).join(", ") }}</p>
+    <p class="group-id">Group ID: {{ group.inviteCode }}</p>
+  </template>
+  <template v-else>
+  <div class="loading-header">
+    <span class="spinner"></span>
+    <span>Loading...</span>
+  </div>
+</template>
+</div>
+
 
       <div class="right">
         <div class="icon-leave-wrap">
@@ -27,7 +36,7 @@
 
 
     <FamilyBarChart :members="memberSpendingData" v-if="memberSpendingData.length" @member-click="goToMember"
-      :month="selectedMonth" :selectedCategory="selectedCategory" />
+      :month="selectedMonth" />
 
 
     <div>
@@ -75,12 +84,12 @@ export default {
     InboxPopup
   },
   data() {
-
     const now = new Date();
     const defaultMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
     return {
       totalSpent: 0,
+      loading: true,
       totalSpentCalculated: false,
       isUpdating: false,
       groupId: this.$route.params.id,
@@ -120,7 +129,7 @@ export default {
         this.fetchInboxAlerts();
       }
     },
-  
+
   },
   methods: {
     async toggleInbox() {
@@ -194,7 +203,10 @@ export default {
         const allReady = memberUIDs.every(uid => tempDataMap[uid]);
         if (allReady) {
           const updatedData = memberUIDs.map(uid => tempDataMap[uid]);
-          this.memberSpendingData = updatedData;
+          const hasChanged = JSON.stringify(this.memberSpendingData) !== JSON.stringify(updatedData);
+          if (hasChanged) {
+            this.memberSpendingData = updatedData;
+          }
           if (!this.totalSpentCalculated) {
             const selectedMonth = this.selectedMonth;
             this.totalSpent = updatedData.reduce((sum, member) => {
@@ -203,6 +215,7 @@ export default {
             }, 0);
             this.totalSpentCalculated = true;
           }
+          this.headerReady = true;
         }
       };
 
@@ -568,6 +581,10 @@ li {
 
 .group-header-box .left {
   flex: 1 1 60%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
 }
 
 .group-header-box .right {
@@ -715,5 +732,28 @@ li {
   background-color: #3d5538;
   color: white;
   border-color: #3d5538;
+}
+
+.loading-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 20px;
+  font-weight: bold;
+  color: white;
+}
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 3px solid #fff;
+  border-top: 3px solid transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 </style>
