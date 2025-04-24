@@ -1,31 +1,45 @@
-# turtletrackr
+# 🐢 TurtleTrackr
 
-This template should help get you started developing with Vue 3 in Vite.
+**"Slow, steady, and financially ready."**
 
-## Recommended IDE Setup
+TurtleTrackr is a personal finance web application designed to help young adults develop better money habits through transaction tracking, savings goals, and social accountability. Built with Vue.js and Firebase, our platform transforms budgeting into a collaborative and engaging experience.
 
-[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+## 📌 Features
 
-## Customize configuration
+- **User Authentication**  
+  Secure sign-up/login with email and avatar selection
 
-See [Vite Configuration Reference](https://vite.dev/config/).
+- **Transaction Logging**  
+  Log daily expenses by category with real-time updates
 
-## Project Setup
+- **Monthly Savings Goal**  
+  Set a personal savings goal and track your progress
 
-```sh
+- **Dashboard Overview**  
+  Visualise your spending habits and goal completion in one glance
+
+- **Family-Style Groups**  
+  Join or create groups to share progress, send reminders, and stay accountable
+
+- **Customisable Turtles**  
+  Choose from hand-drawn turtle avatars based on real-life species
+
+## 🛠️ Tech Stack
+
+- **Frontend**: Vue.js 3 (Composition API)
+- **Backend/Database**: Firebase (Firestore, Auth)
+- **State Management**: Pinia
+- **Hosting**: Firebase Hosting
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Node.js & npm
+- Firebase CLI
+
+### Installation
+
+```bash
+git clone https://github.com/your-team-name/turtletrackr.git
+cd turtletrackr
 npm install
-```
-
-### Compile and Hot-Reload for Development
-
-```sh
-npm run dev
-```
-
-### Compile and Minify for Production
-
-```sh
-npm run build
-```
-
-[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/A7rShPB2)
