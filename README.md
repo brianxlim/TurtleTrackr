@@ -75,8 +75,3 @@ Demo Email 2: testuser2@test.com
 Password (same for both accounts): 123456Test!
 Demo Group Code: CFZAAKTD
 ```
-
-
-## 📄 License
-
-This project is for academic use under NUS BT3103. All rights reserved © Group 13.
